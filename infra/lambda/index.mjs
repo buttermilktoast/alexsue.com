@@ -93,8 +93,16 @@ export const handler = async (event) => {
     CacheControl: `max-age=${MAX_AGE_SECONDS}`
   }))
 
+  // Log what arrived, not just what was stored: unusable fields are carried
+  // forward from the previous object, so without this a push containing
+  // nothing valid is indistinguishable from a good one.
+  const usable = typeof input.steps === 'number' || typeof input.restingHeartRate === 'number'
   console.log(JSON.stringify({
-    outcome: 'ok',
+    outcome: usable ? 'ok' : 'ok-but-nothing-usable',
+    received: input,
+    receivedTypes: Object.fromEntries(
+      Object.entries(input).map(([k, v]) => [k, Array.isArray(v) ? 'array' : typeof v])
+    ),
     steps: output.steps?.value ?? null,
     heart: output.heart?.value ?? null,
     workout: output.workout?.type ?? null,
