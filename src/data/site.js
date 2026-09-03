@@ -23,16 +23,23 @@ export const site = {
     {
       title: 'Hawaiʻi Permit Prep',
       description: "Practice tests for the Hawaiʻi driver's permit exam",
-      url: null,
+      url: 'https://hawaii-permit-prep.buttermilktoast.chatgpt.site/',
       status: 'live',
       tag: 'web'
     },
     {
-      title: 'Alika',
-      description: 'AI assistant / RAG experiment',
-      url: null,
-      status: 'in progress',
-      tag: 'ai'
+      title: 'Hoops',
+      description: 'Basketball game for iPhone and iPad',
+      url: 'https://hoops.gopherapps.com',
+      status: 'on the App Store',
+      tag: 'ios'
+    },
+    {
+      title: 'Unique Daily Affirmations',
+      description: 'A fresh affirmation every day, on iOS',
+      url: 'https://uniquedailyaffirmations.com',
+      status: 'on the App Store',
+      tag: 'ios'
     },
     {
       title: 'Small Tools',
