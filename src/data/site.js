@@ -78,7 +78,7 @@ export const site = {
   statuses: [
     { label: 'Site', value: 'operational', state: 'ok' },
     { label: 'Side projects', value: 'too many', state: 'warn' },
-    { label: 'Current device', value: 'MacBook', state: 'idle' },
+    { label: 'Current device', value: 'MacBook Pro', state: 'idle' },
     { label: 'Playing', value: 'Pragmata', state: 'idle' }
   ],
 
