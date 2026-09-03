@@ -4,7 +4,7 @@
 
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { timingSafeEqual } from 'node:crypto'
-import { computeStatus } from './status.mjs'
+import { computeStatus, toStepTotal, toNumber } from './status.mjs'
 
 const s3 = new S3Client({})
 
@@ -96,10 +96,17 @@ export const handler = async (event) => {
   // Log what arrived, not just what was stored: unusable fields are carried
   // forward from the previous object, so without this a push containing
   // nothing valid is indistinguishable from a good one.
-  const usable = typeof input.steps === 'number' || typeof input.restingHeartRate === 'number'
+  // Judge usability with the same coercion the computation uses, or a value
+  // that parsed perfectly is reported as unusable.
+  const usable = toStepTotal(input.steps) !== null || toNumber(input.restingHeartRate) !== null
   console.log(JSON.stringify({
     outcome: usable ? 'ok' : 'ok-but-nothing-usable',
-    received: input,
+    received: {
+      ...input,
+      steps: typeof input.steps === 'string' && input.steps.length > 120
+        ? `${input.steps.slice(0, 120)}… (${input.steps.split(/[\n\r;]+/).filter(Boolean).length} samples)`
+        : input.steps
+    },
     receivedTypes: Object.fromEntries(
       Object.entries(input).map(([k, v]) => [k, Array.isArray(v) ? 'array' : typeof v])
     ),
