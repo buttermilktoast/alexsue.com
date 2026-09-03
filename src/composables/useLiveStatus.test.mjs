@@ -81,3 +81,13 @@ test('slot maths holds with no offset and across the hour boundary', () => {
   assert.equal(msUntilNextSlot(Date.parse('2026-09-03T14:30:00Z'), HOUR, 0), 30 * 60 * 1000)
   assert.equal(msUntilNextSlot(Date.parse('2026-09-03T23:58:00Z'), HOUR, 0), 2 * 60 * 1000)
 })
+
+test('the heart row shows the bare number when no label is sent', () => {
+  const noLabel = {
+    updated: '2026-09-03T11:50:00Z',
+    heart: { value: 66, state: 'idle' }
+  }
+  const rows = buildRows(noLabel, Date.parse('2026-09-03T12:00:00Z'), 3 * 60 * 60 * 1000)
+  assert.equal(rows[0].label, 'Heart rate')
+  assert.equal(rows[0].value, '66 bpm')
+})

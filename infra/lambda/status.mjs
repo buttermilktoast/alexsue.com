@@ -205,15 +205,6 @@ export function localDay(date, timeZone) {
   }).format(date)
 }
 
-function describeHeart(value, baseline, ready) {
-  if (!ready || baseline == null) return { label: null, state: 'idle' }
-  const delta = value - baseline
-  if (delta <= -3) return { label: 'low', state: 'ok' }
-  if (delta <= 2) return { label: 'nominal', state: 'ok' }
-  if (delta <= 6) return { label: 'elevated', state: 'warn' }
-  return { label: 'high', state: 'warn' }
-}
-
 export function computeStatus({ existing, input, now, config }) {
   const { timeZone, halfLifeDays, minBaselineDays } = config
   // One fold per day, so the half-life is expressed directly in days.
@@ -272,8 +263,12 @@ export function computeStatus({ existing, input, now, config }) {
   }
 
   if (heartRate != null) {
-    const { label, state } = describeHeart(heartRate, baseline.restingHrAvg, baselineReady)
-    output.heart = { value: heartRate, label, state }
+    // Reported without judgement. A live heart rate swings fifty beats
+    // depending on what you are doing, so calling it nominal or elevated
+    // against a daily baseline would label almost everything elevated and
+    // mean nothing. The baseline still tracks it, so a classification can be
+    // reinstated later without waiting to accumulate history again.
+    output.heart = { value: heartRate, state: 'idle' }
   }
 
   // Carry a workout forward until it ages out, so the row disappears on its

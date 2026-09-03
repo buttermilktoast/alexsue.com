@@ -70,23 +70,25 @@ test('a steps-only push does not wipe the heart row', () => {
   assert.equal(stepsOnly.steps.value, 6000)
 })
 
-test('heart labels are relative to the baseline once it is ready', () => {
+test('the heart row carries a number and no classification', () => {
   let state = null
-  // Eight days at 58 bpm to build a baseline past minBaselineDays.
   for (let day = 0; day <= 8; day++) {
     state = push(state, { steps: 8000, restingHeartRate: 58 },
       dayOffset('2026-09-01T20:00:00Z', day))
   }
-  assert.ok(state._baseline.days >= 7, 'baseline ready')
-  assert.equal(state.heart.label, 'nominal')
-  assert.equal(state.heart.state, 'ok')
+  assert.ok(state._baseline.days >= 7, 'baseline is ready')
+  assert.equal(state.heart.value, 58)
+  assert.equal(state.heart.label, undefined, 'no label even with a full baseline')
+  assert.equal(state.heart.state, 'idle')
+})
 
-  const elevated = push(state, { restingHeartRate: 63 }, '2026-09-09T22:00:00Z')
-  assert.equal(elevated.heart.label, 'elevated')
-  assert.equal(elevated.heart.state, 'warn')
-
-  const high = push(state, { restingHeartRate: 75 }, '2026-09-09T22:00:00Z')
-  assert.equal(high.heart.label, 'high')
+test('the baseline still tracks heart rate for later use', () => {
+  let state = null
+  for (let day = 0; day <= 8; day++) {
+    state = push(state, { steps: 8000, restingHeartRate: 58 },
+      dayOffset('2026-09-01T20:00:00Z', day))
+  }
+  assert.ok(state._baseline.restingHrAvg > 0, 'accumulator kept')
 })
 
 test('workouts carry forward then age out', () => {
