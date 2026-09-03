@@ -25,10 +25,25 @@ const reply = (statusCode, body) => ({
   body: JSON.stringify(body)
 })
 
+// The token is accepted under either header. Authorization is conventional,
+// but some clients -- the Shortcuts app among them -- drop or reserve it, so
+// x-push-token is available as a plain alternative. It never goes in a query
+// string, where it would end up in access logs and browser history.
+function presentedToken(event) {
+  const headers = event.headers || {}
+  // Function URLs lowercase header names, but be tolerant of any casing.
+  const get = (name) => {
+    const key = Object.keys(headers).find((k) => k.toLowerCase() === name)
+    return key ? String(headers[key]) : ''
+  }
+  const custom = get('x-push-token').trim()
+  if (custom) return custom
+  return get('authorization').replace(/^Bearer\s+/i, '').trim()
+}
+
 function authorized(event) {
   if (!TOKEN) return false
-  const header = event.headers?.authorization || event.headers?.Authorization || ''
-  const presented = Buffer.from(header.replace(/^Bearer\s+/i, ''))
+  const presented = Buffer.from(presentedToken(event))
   const expected = Buffer.from(TOKEN)
   return presented.length === expected.length && timingSafeEqual(presented, expected)
 }
@@ -49,12 +64,12 @@ export const handler = async (event) => {
   // never the token itself, only whether a credential arrived and how long it
   // was, which is what actually goes wrong (missing "Bearer ", stray space).
   if (!authorized(event)) {
-    const header = event.headers?.authorization || event.headers?.Authorization || ''
+    // Header names only, never values: enough to see what the client actually
+    // sent without writing the token into CloudWatch.
     console.log(JSON.stringify({
       outcome: 'unauthorized',
-      authHeaderPresent: header.length > 0,
-      hasBearerPrefix: /^Bearer\s+/i.test(header),
-      presentedTokenLength: header.replace(/^Bearer\s+/i, '').length,
+      headerNames: Object.keys(event.headers || {}).sort(),
+      presentedTokenLength: presentedToken(event).length,
       expectedTokenLength: (TOKEN || '').length
     }))
     return reply(401, { error: 'unauthorized' })

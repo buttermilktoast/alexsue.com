@@ -21,7 +21,16 @@ const WORKOUT_TTL_MS = 72 * 60 * 60 * 1000
 // emit an ISO timestamp, so accept what it can produce: a duration under
 // either key, and a missing end time meaning "just now". Keeping this lenient
 // is what lets the shortcut be three actions instead of six.
-function normaliseWorkout(workout, now) {
+function normaliseWorkout(input, now, timeZone) {
+  // Accepts either a nested workout object or the flat lastWorkout* fields,
+  // which are far easier to produce in Shortcuts than a nested dictionary.
+  const workout = input?.workout && typeof input.workout === 'object'
+    ? input.workout
+    : {
+        type: input?.lastWorkoutName,
+        duration: input?.lastWorkoutDuration,
+        endedAt: input?.lastWorkoutTimestamp
+      }
   if (!workout || typeof workout !== 'object') return null
 
   const type = typeof workout.type === 'string' ? workout.type.trim() : ''
@@ -30,17 +39,113 @@ function normaliseWorkout(workout, now) {
   if (type === '') return null
 
   const minutes = toNumber(workout.minutes)
-  const seconds = toNumber(workout.seconds ?? workout.durationSeconds ?? workout.duration)
+  const seconds = toNumber(workout.seconds ?? workout.durationSeconds)
   const resolvedMinutes = minutes != null
     ? minutes
-    : seconds != null ? Math.round(seconds / 60) : null
+    : seconds != null
+      ? Math.round(seconds / 60)
+      : parseDuration(workout.duration)
 
-  const parsed = Date.parse(workout.endedAt ?? '')
-  const endedAt = Number.isNaN(parsed) ? now.getTime() : parsed
+  const parsed = parseTimestamp(workout.endedAt, timeZone)
+  const endedAt = parsed == null ? now.getTime() : parsed
 
   // ISO string, matching the shape a carried-forward workout already has, so
   // both paths can be handled identically downstream.
   return { type, minutes: resolvedMinutes, endedAt: new Date(endedAt).toISOString() }
+}
+
+// Shortcuts formats a workout duration as a clock string ("10:03"), not a
+// number of seconds. Two components are minutes:seconds, three are
+// hours:minutes:seconds -- the ordinary reading of a duration.
+export function parseDuration(value) {
+  if (value == null) return null
+  const text = String(value).trim()
+  if (text === '') return null
+
+  if (text.includes(':')) {
+    const parts = text.split(':').map((part) => Number(part.trim()))
+    if (parts.some((part) => !Number.isFinite(part) || part < 0)) return null
+    if (parts.length === 2) return Math.round(parts[0] + parts[1] / 60)
+    if (parts.length === 3) return Math.round(parts[0] * 60 + parts[1] + parts[2] / 60)
+    return null
+  }
+
+  const number = toNumber(text)
+  if (number == null) return null
+  // A bare number is ambiguous. Read anything above five hours as seconds: a
+  // 320-minute workout is unusual, a 320-second one is a brisk walk.
+  return number > 300 ? Math.round(number / 60) : Math.round(number)
+}
+
+// How far ahead of UTC the zone is at a given instant.
+function zoneOffsetMs(instant, timeZone) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    })
+      .formatToParts(instant)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, Number(part.value)])
+  )
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day,
+    parts.hour % 24, parts.minute, parts.second)
+  return asUtc - instant.getTime()
+}
+
+const MONTHS = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+}
+
+// Deliberately not Date.parse: for a string carrying no zone it uses the
+// runtime's local zone, which is UTC on Lambda but the developer's zone
+// locally -- so the same input would parse differently in test and in
+// production. Components are read explicitly instead.
+function parseNaiveParts(text) {
+  const match = text.match(
+    /^([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})[\s,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i
+  )
+  if (!match) return null
+
+  const month = MONTHS[match[1].slice(0, 3).toLowerCase()]
+  if (month === undefined) return null
+
+  let hour = Number(match[4])
+  const meridiem = match[7]
+  if (meridiem) {
+    if (/pm/i.test(meridiem) && hour !== 12) hour += 12
+    if (/am/i.test(meridiem) && hour === 12) hour = 0
+  }
+  if (hour > 23) return null
+
+  return {
+    year: Number(match[3]), month, day: Number(match[2]),
+    hour, minute: Number(match[5]), second: Number(match[6] || 0)
+  }
+}
+
+// Accepts ISO 8601, and the "Sep 2, 2026 at 18:27" shape Shortcuts produces.
+// The latter carries no zone, so it is read as local wall-clock time in the
+// configured zone rather than as UTC -- otherwise every workout lands ten
+// hours off and is dropped for being dated in the future.
+export function parseTimestamp(value, timeZone) {
+  if (value == null) return null
+  const text = String(value).trim()
+  if (text === '') return null
+
+  if (/[Zz]$|[+-]\d{2}:?\d{2}$/.test(text)) {
+    const zoned = Date.parse(text)
+    return Number.isNaN(zoned) ? null : zoned
+  }
+
+  const parts = parseNaiveParts(text.replace(/\s+at\s+/i, ' '))
+  if (!parts) return null
+
+  const asIfUtc = Date.UTC(parts.year, parts.month, parts.day,
+    parts.hour, parts.minute, parts.second)
+  return asIfUtc - zoneOffsetMs(new Date(asIfUtc), timeZone)
 }
 
 // Shortcuts sends health values as strings, and a multi-sample query arrives
@@ -169,7 +274,7 @@ export function computeStatus({ existing, input, now, config }) {
 
   // Carry a workout forward until it ages out, so the row disappears on its
   // own rather than advertising last week's run.
-  const workout = normaliseWorkout(input.workout, now) ?? existing?.workout ?? null
+  const workout = normaliseWorkout(input, now, timeZone) ?? existing?.workout ?? null
   if (workout?.type) {
     const endedAt = Date.parse(workout.endedAt ?? '')
     if (!Number.isNaN(endedAt) && now.getTime() - endedAt < WORKOUT_TTL_MS) {

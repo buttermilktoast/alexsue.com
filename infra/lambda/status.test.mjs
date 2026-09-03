@@ -188,3 +188,49 @@ test('a missing end time means the workout just happened', () => {
   assert.equal(state.workout.type, 'Yoga')
   assert.equal(state.workout.endedAt, '2026-09-02T20:00:00.000Z')
 })
+
+test('a clock-formatted duration is read as minutes:seconds', () => {
+  const state = push(null,
+    { lastWorkoutName: 'Outdoor Run', lastWorkoutDuration: '10:03',
+      lastWorkoutTimestamp: '2026-09-02T19:00:00Z' },
+    '2026-09-02T20:00:00Z')
+  assert.equal(state.workout.type, 'Outdoor Run')
+  assert.equal(state.workout.minutes, 10, '10:03 is ten minutes, not ten hours')
+})
+
+test('a three-part duration is hours:minutes:seconds', () => {
+  const state = push(null,
+    { lastWorkoutName: 'Long Ride', lastWorkoutDuration: '1:30:00',
+      lastWorkoutTimestamp: '2026-09-02T19:00:00Z' },
+    '2026-09-02T20:00:00Z')
+  assert.equal(state.workout.minutes, 90)
+})
+
+test("Shortcuts' local timestamp is read in the configured zone", () => {
+  // 18:27 in Honolulu on Sep 2 is 04:27 UTC on Sep 3.
+  const state = push(null,
+    { lastWorkoutName: 'Outdoor Run', lastWorkoutDuration: '10:03',
+      lastWorkoutTimestamp: 'Sep 2, 2026 at 18:27' },
+    '2026-09-03T05:00:00Z')
+  assert.equal(state.workout.endedAt, '2026-09-03T04:27:00.000Z')
+})
+
+test('a local timestamp is not read as UTC and thrown away as future-dated', () => {
+  // Parsed naively this would be 18:27 UTC, ten hours ahead of the real
+  // instant, and a workout dated in the future is nonsense.
+  const state = push(null,
+    { lastWorkoutName: 'Outdoor Run', lastWorkoutDuration: '10:03',
+      lastWorkoutTimestamp: 'Sep 2, 2026 at 18:27' },
+    '2026-09-03T05:00:00Z')
+  assert.ok(Date.parse(state.workout.endedAt) < Date.parse('2026-09-03T05:00:00Z'),
+    'ended in the past')
+})
+
+test('flat fields still work when the name is missing', () => {
+  const seeded = push(null, { steps: 5000 }, '2026-09-02T20:00:00Z')
+  const noName = push(seeded,
+    { steps: 5200, lastWorkoutName: '', lastWorkoutDuration: '10:03' },
+    '2026-09-02T21:00:00Z')
+  assert.equal(noName.workout, undefined)
+  assert.equal(noName.steps.value, 5200)
+})
