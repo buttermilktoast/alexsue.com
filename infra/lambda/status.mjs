@@ -30,6 +30,37 @@ export function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+// Steps arrive as many samples per day. Shortcuts cannot reliably sum them,
+// so the raw list is sent and totalled here.
+//
+// Split on newlines and semicolons but never on commas, which appear inside
+// numbers as thousand separators. Each entry keeps only its leading number so
+// a unit suffix ("2 count") still parses. If any non-empty entry fails to
+// parse the whole push is rejected: undercounting a day silently is worse
+// than showing the row as stale.
+const MAX_SAMPLES = 10000
+
+export function toStepTotal(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+
+  const parts = Array.isArray(value)
+    ? value
+    : typeof value === 'string' ? value.split(/[\n\r;]+/) : null
+  if (!parts || parts.length > MAX_SAMPLES) return null
+
+  let total = 0
+  let counted = 0
+  for (const part of parts) {
+    const text = String(part).trim().replace(/,/g, '')
+    if (text === '') continue
+    const match = text.match(/^-?\d+(?:\.\d+)?/)
+    if (!match) return null
+    total += Number(match[0])
+    counted += 1
+  }
+  return counted === 0 ? null : Math.round(total)
+}
+
 export function plausible(value, [min, max]) {
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
 }
@@ -84,7 +115,7 @@ export function computeStatus({ existing, input, now, config }) {
   // fields carry forward. Steps reset at the day boundary; heart rate is a
   // point-in-time sample, so the last one stands until replaced.
   const sameDay = previousDay === today
-  const inputSteps = toNumber(input.steps)
+  const inputSteps = toStepTotal(input.steps)
   const inputHeartRate = toNumber(input.restingHeartRate)
 
   const steps = plausible(inputSteps, BOUNDS.steps)

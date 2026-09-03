@@ -124,18 +124,24 @@ time the shortcut runs. The push token is the only secret involved.
 Build this in the Shortcuts app (not as an automation yet, so it can be tested
 by hand). Actions in order:
 
-1. **Find Health Samples** — Type `Steps`, Filter `Start Date` `is today`.
-2. **Calculate Statistics** — Operation `Sum`, Input the samples from step 1.
-   Steps arrive as many small samples through the day; this is what turns them
-   into a daily total.
-3. **Find Health Samples** — Type `Resting Heart Rate`, Sort by `Start Date`,
-   Order `Latest First`, Limit `1`.
+1. **Find All Health Samples Where** — Type `Steps`, Filter `Start Date`
+   `is today`. **No limit** — a limit of 1 returns only the most recent
+   sample, which is a handful of steps rather than the day's total.
+2. **Combine Text** — separator `;`. The samples must reach the endpoint on a
+   single line: a JSON string cannot contain raw newlines, so pasting a
+   multi-line list into the body produces a 400. The total is calculated
+   server-side, so no `Calculate Statistics` action is needed.
+3. **Find All Health Samples Where** — Type `Resting Heart Rate`, Sort by
+   `Start Date`, Order `Latest First`, Limit `1`. Here a limit of 1 is correct:
+   it is a point-in-time reading, not something to accumulate.
 4. **Text** — the request body, inserting the two variables:
    ```
-   {"steps":[Statistics],"restingHeartRate":[Value]}
+   {"steps":"[Combined Text]","restingHeartRate":"[Value]"}
    ```
-   Both must be bare numbers, not quoted. Tap the variable chip from step 3
-   and choose `Value` so it inserts the number rather than the sample object.
+   Quoting these as strings is deliberate. Shortcuts sends values as text, and
+   the endpoint coerces them, so quoted numbers are accepted; `steps` may be a
+   single number, a `;`-separated list, a newline-separated list, or a JSON
+   array, and is totalled on arrival.
 5. **Get Contents of URL** — the function URL, Method `POST`, Request Body
    `File` with the Text from step 4 as input. Headers:
 
