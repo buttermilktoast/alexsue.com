@@ -42,6 +42,6 @@ where these are unset, it shows `version development`.
 
 ## One-time setup
 
-See [`plans/website.md`](plans/website.md) for the GitHub Pages settings and the
-DNS records for the apex domain and `www` — including the requirement not to
-disturb the existing iCloud Mail records.
+See [`SETUP.md`](SETUP.md) for the GitHub Pages settings and the DNS records
+for the apex domain and `www`, including the recorded baseline of the iCloud
+Mail records that must be left intact.
