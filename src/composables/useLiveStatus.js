@@ -133,16 +133,18 @@ export function buildRows(payload, nowMs, staleAfterMs) {
   const age = nowMs - updated
   const fresh = age < staleAfterMs
 
-  // Shown fresh or not: when data goes stale the health rows disappear but
-  // this one stays and turns idle, so a broken pipeline reads as "last sync
-  // 9h ago" rather than the rows silently vanishing with no explanation.
   const sync = {
     label: 'Last sync',
     value: relativeTime(age),
     title: new Date(updated).toLocaleString(),
     state: fresh ? 'ok' : 'idle'
   }
-  if (!fresh) return [sync]
+
+  // Stale readings are still shown -- the sync row says how old they are, and
+  // an eleven-hour-old step count is information rather than a lie. What goes
+  // is the judgement: every dot drops to neutral so nothing reads as a
+  // current assessment of a number that is not current.
+  const dot = (state) => (fresh ? state ?? 'idle' : 'idle')
 
   const { steps, heart, workout } = payload
   const out = []
@@ -153,7 +155,7 @@ export function buildRows(payload, nowMs, staleAfterMs) {
       value: typeof steps.pctOfAverage === 'number'
         ? `${steps.value.toLocaleString()} · ${steps.pctOfAverage}% of avg`
         : steps.value.toLocaleString(),
-      state: steps.state ?? 'idle'
+      state: dot(steps.state)
     })
   }
 
@@ -161,7 +163,7 @@ export function buildRows(payload, nowMs, staleAfterMs) {
     out.push({
       label: 'Heart rate',
       value: heart.label ? `${heart.label} · ${heart.value} bpm` : `${heart.value} bpm`,
-      state: heart.state ?? 'idle'
+      state: dot(heart.state)
     })
   }
 
@@ -169,7 +171,7 @@ export function buildRows(payload, nowMs, staleAfterMs) {
     out.push({
       label: 'Last workout',
       value: `${workout.type}${workout.minutes ? ` · ${workout.minutes}m` : ''}`,
-      state: 'ok'
+      state: dot('ok')
     })
   }
 
