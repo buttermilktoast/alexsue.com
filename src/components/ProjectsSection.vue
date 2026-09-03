@@ -9,6 +9,9 @@ import SectionBlock from './SectionBlock.vue'
       <li v-for="project in site.projects" :key="project.title" class="project">
         <div class="line">
           <h3 class="title">
+            <span v-if="project.emoji" class="emoji" aria-hidden="true">{{
+              project.emoji
+            }}</span>
             <a
               v-if="project.url"
               :href="project.url"
@@ -48,8 +51,21 @@ import SectionBlock from './SectionBlock.vue'
 }
 
 .title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
+}
+
+/* Fixed width so the titles line up whatever glyph sits in front of them.
+   Width plus gap is the 1.75rem the description and status indent by. */
+.emoji {
+  flex: none;
+  width: 1.25rem;
+  font-size: 1.05em;
+  line-height: 1;
+  text-align: center;
 }
 
 .arrow {
@@ -63,6 +79,12 @@ import SectionBlock from './SectionBlock.vue'
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   letter-spacing: 0.04em;
+}
+
+/* Indented to the title text, past the emoji column. */
+.description,
+.status {
+  padding-left: 1.75rem;
 }
 
 .description {

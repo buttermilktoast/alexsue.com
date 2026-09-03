@@ -20,6 +20,15 @@ export const site = {
 
   projects: [
     {
+      emoji: '💬',
+      title: 'Between Us',
+      description: 'Conversation cards to bring couples closer',
+      url: 'https://betweenus-talk.web.app',
+      status: 'live',
+      tag: 'web'
+    },
+    {
+      emoji: '🚗',
       title: 'Hawaiʻi Permit Prep',
       description: "Practice tests for the Hawaiʻi driver's permit exam",
       url: 'https://hawaii-permit-prep.buttermilktoast.chatgpt.site/',
@@ -27,6 +36,7 @@ export const site = {
       tag: 'web'
     },
     {
+      emoji: '🏀',
       title: 'Hoops',
       description: 'Basketball game for iPhone and iPad',
       url: 'https://hoops.gopherapps.com',
@@ -34,6 +44,7 @@ export const site = {
       tag: 'ios'
     },
     {
+      emoji: '✨',
       title: 'Unique Daily Affirmations',
       description: 'A fresh affirmation every day, on iOS',
       url: 'https://uniquedailyaffirmations.com',
@@ -41,6 +52,7 @@ export const site = {
       tag: 'ios'
     },
     {
+      emoji: '🔧',
       title: 'Small Tools',
       description: 'Things built because they were useful',
       url: null,
