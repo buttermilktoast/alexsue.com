@@ -27,6 +27,32 @@ variables → Actions → Variables) to the printed S3 URL, and redeploy the sit
 Without it the live rows are simply absent — the section falls back to the
 hand-written rows.
 
+## Teardown
+
+```sh
+./infra/teardown.sh          # prompts for the bucket name
+./infra/teardown.sh --yes    # no prompt
+```
+
+Removes the function (its URL, resource policy and reserved concurrency go
+with it), the role and its policies, the bucket and its contents, and the
+CloudWatch log group — which Lambda creates implicitly and does *not* delete
+along with the function, so it is the one thing that would otherwise linger.
+
+Nothing here has a retention lock or a slow disable-then-delete cycle, so the
+whole thing goes in one pass. Safe against a partial deploy: each step skips
+what is already gone.
+
+Two things live outside AWS and must be undone by hand: the `VITE_STATUS_URL`
+repository variable, and the push token stored in the Shortcut on your phone.
+
+**The baseline is destroyed with the bucket** and cannot be rebuilt, since the
+pipeline keeps no history. If you plan to redeploy, save it first:
+
+```sh
+aws s3 cp s3://<bucket>/status.json ./status-backup.json
+```
+
 ## Push contract
 
 `POST` to the Function URL with `Authorization: Bearer <token>`. Every field is
