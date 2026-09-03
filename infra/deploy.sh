@@ -93,14 +93,24 @@ else
   echo "already exists"
 fi
 
+# ListBucket matters more than it looks: without it S3 answers a GET for a
+# missing key with AccessDenied rather than NoSuchKey, so the very first push
+# into an empty bucket would fail instead of seeding a fresh baseline.
 cat > "$work/s3-access.json" <<ACCESS
 {
   "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": ["s3:GetObject", "s3:PutObject"],
-    "Resource": "arn:aws:s3:::${BUCKET}/${KEY}"
-  }]
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::${BUCKET}/${KEY}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::${BUCKET}"
+    }
+  ]
 }
 ACCESS
 aws iam put-role-policy --role-name "$ROLE" --policy-name status-object-access \
