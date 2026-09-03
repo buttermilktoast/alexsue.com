@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { computeStatus } from './status.mjs'
+import { computeStatus, previousDate } from './status.mjs'
 
 const config = { timeZone: 'Pacific/Honolulu', halfLifeDays: 14, minBaselineDays: 7 }
 const at = (iso) => new Date(iso)
@@ -252,4 +252,99 @@ test('heartRate is accepted as an alias for restingHeartRate', () => {
 test('a physiologically impossible rate is still rejected', () => {
   const seeded = push(null, { restingHeartRate: 60 }, '2026-09-02T20:00:00Z')
   assert.equal(push(seeded, { restingHeartRate: 400 }, '2026-09-02T21:00:00Z').heart.value, 60)
+})
+
+test('an explicit yesterday total folds authoritatively', () => {
+  // No push landed late the previous night; the morning push still banks it.
+  const state = push(null, { steps: '400', stepsYesterday: '11200' },
+    '2026-09-03T20:00:00Z')
+  assert.equal(state._baseline.days, 1)
+  assert.equal(state._baseline.stepsAvg, 11200)
+  assert.equal(state._baseline.lastFolded, '2026-09-02')
+  assert.equal(state.steps.value, 400, "today's count is unaffected")
+})
+
+test('repeated pushes through the day do not fold twice', () => {
+  let state = push(null, { steps: '400', stepsYesterday: '11200' }, '2026-09-03T20:00:00Z')
+  const after = state._baseline.stepsAvg
+  for (const hour of ['21', '22', '23']) {
+    state = push(state, { steps: '900', stepsYesterday: '11200' },
+      `2026-09-03T${hour}:00:00Z`)
+    assert.equal(state._baseline.days, 1, `no extra fold at ${hour}:00`)
+    assert.equal(state._baseline.stepsAvg, after)
+  }
+})
+
+test('consecutive days each fold once, from their own stated total', () => {
+  let state = push(null, { steps: '300', stepsYesterday: '10000' }, '2026-09-03T20:00:00Z')
+  state = push(state, { steps: '300', stepsYesterday: '12000' }, '2026-09-04T20:00:00Z')
+  assert.equal(state._baseline.days, 2)
+  assert.equal(state._baseline.lastFolded, '2026-09-03')
+  assert.ok(state._baseline.stepsAvg > 10000 && state._baseline.stepsAvg < 12000)
+})
+
+test('without the field it still falls back to the last stored value', () => {
+  const day1 = push(null, { steps: '9000' }, '2026-09-02T20:00:00Z')
+  const day2 = push(day1, { steps: '500' }, '2026-09-03T20:00:00Z')
+  assert.equal(day2._baseline.days, 1)
+  assert.equal(day2._baseline.stepsAvg, 9000, 'inferred from the last push of that day')
+})
+
+test('an implausible yesterday total falls through rather than poisoning', () => {
+  const day1 = push(null, { steps: '9000' }, '2026-09-02T20:00:00Z')
+  const day2 = push(day1, { steps: '500', stepsYesterday: '999999' }, '2026-09-03T20:00:00Z')
+  assert.equal(day2._baseline.stepsAvg, 9000, 'fell back to the stored value')
+})
+
+test('previousDate crosses month and year boundaries', () => {
+  assert.equal(previousDate('2026-09-01'), '2026-08-31')
+  assert.equal(previousDate('2026-03-01'), '2026-02-28')
+  assert.equal(previousDate('2027-01-01'), '2026-12-31')
+})
+
+test('a rolling 24h total folds once per day', () => {
+  let state = push(null, { steps: '400', stepsLast24h: '10500' }, '2026-09-03T20:00:00Z')
+  assert.equal(state._baseline.days, 1)
+  assert.equal(state._baseline.stepsAvg, 10500)
+
+  // Sent again on every push through the same day: must not fold again.
+  for (const hour of ['21', '22', '23']) {
+    state = push(state, { steps: '900', stepsLast24h: '10800' },
+      `2026-09-03T${hour}:00:00Z`)
+    assert.equal(state._baseline.days, 1, `no second fold at ${hour}:00`)
+    assert.equal(state._baseline.stepsAvg, 10500)
+  }
+
+  // Next local day folds once more.
+  state = push(state, { steps: '200', stepsLast24h: '11000' }, '2026-09-04T20:00:00Z')
+  assert.equal(state._baseline.days, 2)
+})
+
+test('the baseline never gains more days than the calendar has', () => {
+  // Sources may be mixed as the shortcut changes; what must hold is that a
+  // day contributes once, however that day's figure arrived.
+  let state = null
+  const days = [
+    { steps: '9000', stepsLast24h: '10500' },   // rolling
+    { steps: '300' },                            // fallback
+    { steps: '400', stepsYesterday: '11000' },   // exact
+    { steps: '500', stepsLast24h: '9800' }       // rolling again
+  ]
+  days.forEach((body, index) => {
+    // Several pushes per day, as an hourly automation would send.
+    for (const hour of ['14', '18', '22']) {
+      const iso = `2026-09-0${3 + index}T${hour}:00:00Z`
+      state = push(state, body, iso)
+    }
+  })
+  assert.ok(state._baseline.days <= days.length,
+    `expected at most ${days.length} folds, got ${state._baseline.days}`)
+})
+
+test('an explicit calendar total is preferred over the rolling one', () => {
+  const state = push(null,
+    { steps: '400', stepsYesterday: '12000', stepsLast24h: '9000' },
+    '2026-09-03T20:00:00Z')
+  assert.equal(state._baseline.stepsAvg, 12000, 'exact total wins')
+  assert.equal(state._baseline.lastFolded, '2026-09-02')
 })

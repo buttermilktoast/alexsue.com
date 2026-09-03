@@ -205,6 +205,16 @@ export function localDay(date, timeZone) {
   }).format(date)
 }
 
+// Calendar arithmetic on the local date string. Done in UTC deliberately: the
+// input is already a wall-clock date in the target zone, so this is pure date
+// maths and must not be re-interpreted against any zone or DST rule.
+export function previousDate(dayString) {
+  const [year, month, day] = dayString.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  date.setUTCDate(date.getUTCDate() - 1)
+  return date.toISOString().slice(0, 10)
+}
+
 export function computeStatus({ existing, input, now, config }) {
   const { timeZone, halfLifeDays, minBaselineDays } = config
   // One fold per day, so the half-life is expressed directly in days.
@@ -215,14 +225,54 @@ export function computeStatus({ existing, input, now, config }) {
   const today = localDay(now, timeZone)
 
   const baseline = {
-    stepsAvg: null, restingHrAvg: null, days: 0, lastFolded: null,
+    stepsAvg: null, restingHrAvg: null, days: 0, lastFolded: null, lastRolled: null,
     ...(existing?._baseline ?? {})
   }
 
   // Fold only completed days. Steps accumulate through the day, so folding a
   // mid-morning sample into a daily average would drag the baseline down.
   const previousDay = existing?.day ?? null
-  if (previousDay && previousDay !== today && baseline.lastFolded !== previousDay) {
+
+  const inputSteps = toStepTotal(input.steps)
+  // The wire field is still restingHeartRate for compatibility with the
+  // shortcut already in the field; heartRate is accepted as the truer name.
+  const inputHeartRate = toNumber(input.heartRate ?? input.restingHeartRate)
+
+  const yesterday = previousDate(today)
+  const statedYesterday = toStepTotal(input.stepsYesterday)
+  const rolling = toStepTotal(input.stepsLast24h)
+
+  if (plausible(statedYesterday, BOUNDS.steps) && baseline.lastFolded !== yesterday) {
+    // Best case: a true calendar-day total. Exact, and immune to when the
+    // push happens to land.
+    baseline.stepsAvg = ewma(baseline.stepsAvg, statedYesterday)
+    if (plausible(inputHeartRate, BOUNDS.heartRate)) {
+      baseline.restingHrAvg = ewma(baseline.restingHrAvg, inputHeartRate)
+    }
+    baseline.days += 1
+    baseline.lastFolded = yesterday
+    baseline.lastRolled = today
+  } else if (plausible(rolling, BOUNDS.steps) && baseline.lastRolled !== today) {
+    // A rolling 24-hour total, which is what Shortcuts can actually query --
+    // its date filter offers "within the last X days" but no relative
+    // "yesterday". For a baseline meaning "a typical day's activity" a
+    // 24-hour window sampled around the same time daily is equivalent, and it
+    // removes the dependency on a push landing before midnight. That matters
+    // because HealthKit cannot be read while the device is locked, so a
+    // late-night automation frequently never runs at all.
+    baseline.stepsAvg = ewma(baseline.stepsAvg, rolling)
+    if (plausible(inputHeartRate, BOUNDS.heartRate)) {
+      baseline.restingHrAvg = ewma(baseline.restingHrAvg, inputHeartRate)
+    }
+    baseline.days += 1
+    baseline.lastRolled = today
+    // Also marks the calendar day handled, so the fallback below cannot count
+    // the same stretch of walking a second time.
+    baseline.lastFolded = previousDate(today)
+  } else if (previousDay && previousDay !== today && baseline.lastFolded !== previousDay) {
+    // Fallback for pushes that carry no explicit total: infer the day from
+    // the last value stored on it, which understates by however long passed
+    // between that push and midnight.
     const finalSteps = existing?.steps?.value
     const finalHr = existing?.heart?.value
     if (plausible(finalSteps, BOUNDS.steps)) {
@@ -239,10 +289,6 @@ export function computeStatus({ existing, input, now, config }) {
   // fields carry forward. Steps reset at the day boundary; heart rate is a
   // point-in-time sample, so the last one stands until replaced.
   const sameDay = previousDay === today
-  const inputSteps = toStepTotal(input.steps)
-  // The wire field is still restingHeartRate for compatibility with the
-  // shortcut already in the field; heartRate is accepted as the truer name.
-  const inputHeartRate = toNumber(input.heartRate ?? input.restingHeartRate)
 
   const steps = plausible(inputSteps, BOUNDS.steps)
     ? inputSteps
@@ -291,7 +337,8 @@ export function computeStatus({ existing, input, now, config }) {
     stepsAvg: baseline.stepsAvg == null ? null : Math.round(baseline.stepsAvg),
     restingHrAvg: baseline.restingHrAvg == null ? null : Number(baseline.restingHrAvg.toFixed(1)),
     days: baseline.days,
-    lastFolded: baseline.lastFolded
+    lastFolded: baseline.lastFolded,
+    lastRolled: baseline.lastRolled
   }
 
   return output
