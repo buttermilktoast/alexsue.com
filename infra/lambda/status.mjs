@@ -11,7 +11,9 @@
 // if it is the current value, but it never reaches the baseline.
 export const BOUNDS = {
   steps: [0, 100000],
-  restingHeartRate: [30, 120],
+  // Upper bound covers a live heart rate under exertion, not just a resting
+  // one -- at 120 every reading taken while moving would be discarded.
+  heartRate: [30, 220],
   workoutMinutes: [0, 1440]
 }
 
@@ -235,7 +237,7 @@ export function computeStatus({ existing, input, now, config }) {
     if (plausible(finalSteps, BOUNDS.steps)) {
       baseline.stepsAvg = ewma(baseline.stepsAvg, finalSteps)
     }
-    if (plausible(finalHr, BOUNDS.restingHeartRate)) {
+    if (plausible(finalHr, BOUNDS.heartRate)) {
       baseline.restingHrAvg = ewma(baseline.restingHrAvg, finalHr)
     }
     baseline.days += 1
@@ -247,13 +249,15 @@ export function computeStatus({ existing, input, now, config }) {
   // point-in-time sample, so the last one stands until replaced.
   const sameDay = previousDay === today
   const inputSteps = toStepTotal(input.steps)
-  const inputHeartRate = toNumber(input.restingHeartRate)
+  // The wire field is still restingHeartRate for compatibility with the
+  // shortcut already in the field; heartRate is accepted as the truer name.
+  const inputHeartRate = toNumber(input.heartRate ?? input.restingHeartRate)
 
   const steps = plausible(inputSteps, BOUNDS.steps)
     ? inputSteps
     : (sameDay ? existing?.steps?.value ?? null : null)
 
-  const heartRate = plausible(inputHeartRate, BOUNDS.restingHeartRate)
+  const heartRate = plausible(inputHeartRate, BOUNDS.heartRate)
     ? inputHeartRate
     : existing?.heart?.value ?? null
 

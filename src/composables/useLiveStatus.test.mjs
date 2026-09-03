@@ -17,7 +17,7 @@ const labels = (rows) => rows.map((r) => r.label)
 
 test('fresh payload renders the health rows and the sync row last', () => {
   const rows = buildRows(payload('2026-09-03T11:48:00Z'), NOW, STALE_AFTER)
-  assert.deepEqual(labels(rows), ['Steps', 'Resting heart', 'Last workout', 'Last sync'])
+  assert.deepEqual(labels(rows), ['Steps', 'Heart rate', 'Last workout', 'Last sync'])
   assert.equal(rows[0].value, '10,611 · 101% of avg')
   assert.equal(rows[1].value, 'nominal · 56 bpm')
   assert.equal(rows[3].value, '12m ago')

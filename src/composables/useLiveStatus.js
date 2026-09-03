@@ -159,7 +159,7 @@ export function buildRows(payload, nowMs, staleAfterMs) {
 
   if (heart?.value != null) {
     out.push({
-      label: 'Resting heart',
+      label: 'Heart rate',
       value: heart.label ? `${heart.label} · ${heart.value} bpm` : `${heart.value} bpm`,
       state: heart.state ?? 'idle'
     })
