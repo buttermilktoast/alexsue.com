@@ -115,11 +115,12 @@ test('numeric strings from Shortcuts are accepted', () => {
   assert.equal(state.heart.value, 56)
 })
 
-test('newline-separated sample text is rejected, not truncated', () => {
+test('newline-separated sample text is summed, never truncated', () => {
   const seeded = push(null, { steps: 5000 }, '2026-09-02T20:00:00Z')
   const messy = push(seeded, { steps: '1200\n3400\n900' }, '2026-09-02T22:00:00Z')
-  // Silently reading this as 1200 would be a wrong number, not a missing one.
-  assert.equal(messy.steps.value, 5000, 'previous value carried forward')
+  // Reading only the first line would store 1200 -- a wrong number rather
+  // than a missing one, which is the failure this guards against.
+  assert.equal(messy.steps.value, 5500)
 })
 
 test('empty and non-numeric strings are rejected', () => {
@@ -134,4 +135,35 @@ test('a workout duration sent as a string is accepted', () => {
     { workout: { type: 'Outdoor Run', minutes: '32', endedAt: '2026-09-02T19:00:00Z' } },
     '2026-09-02T20:00:00Z')
   assert.equal(state.workout.minutes, 32)
+})
+
+test('sums a newline-separated sample list', () => {
+  const state = push(null, { steps: '1200\n3400\n900' }, '2026-09-02T20:00:00Z')
+  assert.equal(state.steps.value, 5500)
+})
+
+test('sums a semicolon-separated list and a real array', () => {
+  assert.equal(push(null, { steps: '1200;3400;900' }, '2026-09-02T20:00:00Z').steps.value, 5500)
+  assert.equal(push(null, { steps: [1200, 3400, 900] }, '2026-09-02T20:00:00Z').steps.value, 5500)
+  assert.equal(push(null, { steps: ['1200', '3400'] }, '2026-09-02T20:00:00Z').steps.value, 4600)
+})
+
+test('commas are thousand separators, never delimiters', () => {
+  // Splitting on commas would turn one reading of 1200 into 1 + 200.
+  assert.equal(push(null, { steps: '1,200' }, '2026-09-02T20:00:00Z').steps.value, 1200)
+  assert.equal(push(null, { steps: '1,200\n3,400' }, '2026-09-02T20:00:00Z').steps.value, 4600)
+})
+
+test('unit suffixes on each sample still parse', () => {
+  assert.equal(push(null, { steps: '1200 count\n3400 count' }, '2026-09-02T20:00:00Z').steps.value, 4600)
+})
+
+test('one unparseable entry rejects the whole total', () => {
+  const seeded = push(null, { steps: 5000 }, '2026-09-02T20:00:00Z')
+  const messy = push(seeded, { steps: '1200\nno idea\n900' }, '2026-09-02T22:00:00Z')
+  assert.equal(messy.steps.value, 5000, 'carried forward rather than undercounted')
+})
+
+test('blank lines are ignored', () => {
+  assert.equal(push(null, { steps: '1200\n\n3400\n' }, '2026-09-02T20:00:00Z').steps.value, 4600)
 })
