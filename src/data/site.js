@@ -54,7 +54,11 @@ export const site = {
   // the static rows below.
   live: {
     url: import.meta.env.VITE_STATUS_URL || null,
-    intervalMs: 60 * 60 * 1000,
+    // Polling is anchored to page load, not the wall clock, so there is no
+    // phase to align with the hourly push -- every visitor already has a
+    // different offset. A shorter interval is what bounds the lag: a tab left
+    // open trails the latest push by at most this, rather than a full hour.
+    intervalMs: 15 * 60 * 1000,
     staleAfterMs: 3 * 60 * 60 * 1000
   },
 
