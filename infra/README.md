@@ -53,6 +53,18 @@ pipeline keeps no history. If you plan to redeploy, save it first:
 aws s3 cp s3://<bucket>/status.json ./status-backup.json
 ```
 
+## Function URL permissions
+
+A public function URL needs **two** resource-policy statements, not one:
+`lambda:InvokeFunctionUrl`, and `lambda:InvokeFunction` conditioned on
+`lambda:InvokedViaFunctionUrl`. This became a requirement in October 2025. The
+console and SAM add both for you; over the CLI they are separate calls.
+
+With only the first, every request — even one with no auth header at all —
+returns a blanket `403 Forbidden` from Lambda's own auth layer and never
+reaches the handler, so nothing appears in CloudWatch. `deploy.sh` applies
+both statements on every run, so a half-configured function repairs itself.
+
 ## Push contract
 
 `POST` to the Function URL with `Authorization: Bearer <token>`. Every field is

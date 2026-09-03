@@ -169,11 +169,27 @@ say "Function URL"
 if ! aws lambda get-function-url-config --function-name "$FUNCTION" >/dev/null 2>&1; then
   aws lambda create-function-url-config --function-name "$FUNCTION" \
     --auth-type NONE >/dev/null
-  aws lambda add-permission --function-name "$FUNCTION" \
-    --statement-id FunctionURLAllowPublicAccess \
-    --action lambda:InvokeFunctionUrl --principal '*' \
-    --function-url-auth-type NONE >/dev/null
+  echo "   url created"
 fi
+
+# Since October 2025 a public function URL needs BOTH statements: granting only
+# lambda:InvokeFunctionUrl yields a blanket 403 that never reaches the handler.
+# The console and SAM add both automatically; over the CLI they are separate
+# calls. Applied on every run so a half-configured function repairs itself --
+# ResourceConflictException just means the statement is already there.
+add_url_permission() {
+  local sid="$1"; shift
+  if aws lambda add-permission --function-name "$FUNCTION" \
+      --statement-id "$sid" --principal '*' "$@" >/dev/null 2>&1; then
+    echo "   granted ${sid}"
+  else
+    echo "   ${sid} already present"
+  fi
+}
+add_url_permission FunctionURLAllowPublicAccess \
+  --action lambda:InvokeFunctionUrl --function-url-auth-type NONE
+add_url_permission FunctionURLInvokeAllowPublicAccess \
+  --action lambda:InvokeFunction --invoked-via-function-url
 FUNCTION_URL="$(aws lambda get-function-url-config --function-name "$FUNCTION" \
   --query FunctionUrl --output text)"
 
