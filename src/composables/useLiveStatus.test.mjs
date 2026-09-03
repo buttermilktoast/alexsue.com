@@ -24,11 +24,19 @@ test('fresh payload renders the health rows and the sync row last', () => {
   assert.equal(rows[3].state, 'ok')
 })
 
-test('stale payload keeps only the sync row, so the gap is visible', () => {
+test('stale payload still shows the readings, with every dot neutral', () => {
   const rows = buildRows(payload('2026-09-03T03:00:00Z'), NOW, STALE_AFTER)
-  assert.deepEqual(labels(rows), ['Last sync'])
-  assert.equal(rows[0].value, '9h ago')
-  assert.equal(rows[0].state, 'idle', 'reads as unknown rather than current')
+  assert.deepEqual(labels(rows), ['Steps', 'Heart rate', 'Last workout', 'Last sync'])
+  // The numbers survive; the sync row supplies the age that makes them honest.
+  assert.equal(rows[0].value, '10,611 · 101% of avg')
+  assert.equal(rows.at(-1).value, '9h ago')
+  assert.deepEqual(rows.map((r) => r.state), ['idle', 'idle', 'idle', 'idle'],
+    'nothing reads as a current assessment')
+})
+
+test('a fresh payload keeps its dots', () => {
+  const rows = buildRows(payload('2026-09-03T11:48:00Z'), NOW, STALE_AFTER)
+  assert.deepEqual(rows.map((r) => r.state), ['ok', 'ok', 'ok', 'ok'])
 })
 
 test('no payload renders nothing at all', () => {
