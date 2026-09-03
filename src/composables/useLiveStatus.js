@@ -87,39 +87,70 @@ export function useLiveStatus({ url, intervalMs, staleAfterMs }) {
   // request for a six-hour-old object is still stale data.
   const isFresh = computed(() => payload.value !== null && ageMs.value < staleAfterMs)
 
-  const rows = computed(() => {
-    if (!isFresh.value) return []
-    const { steps, heart, workout } = payload.value
-    const out = []
-
-    if (steps?.value != null) {
-      out.push({
-        label: 'Steps',
-        value: typeof steps.pctOfAverage === 'number'
-          ? `${steps.value.toLocaleString()} · ${steps.pctOfAverage}% of avg`
-          : steps.value.toLocaleString(),
-        state: steps.state ?? 'idle'
-      })
-    }
-
-    if (heart?.value != null) {
-      out.push({
-        label: 'Resting heart',
-        value: heart.label ? `${heart.label} · ${heart.value} bpm` : `${heart.value} bpm`,
-        state: heart.state ?? 'idle'
-      })
-    }
-
-    if (workout?.type) {
-      out.push({
-        label: 'Last workout',
-        value: `${workout.type}${workout.minutes ? ` · ${workout.minutes}m` : ''}`,
-        state: 'ok'
-      })
-    }
-
-    return out
-  })
+  const rows = computed(() => buildRows(payload.value, now.value, staleAfterMs))
 
   return { rows, isFresh, failed, payload, refresh: load }
+}
+
+export function relativeTime(ms) {
+  const minutes = Math.round(ms / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
+
+// Age is measured from the payload's own push timestamp, not from when it was
+// fetched: a successful request for a six-hour-old object is still stale data.
+export function buildRows(payload, nowMs, staleAfterMs) {
+  if (!payload?.updated) return []
+
+  const updated = Date.parse(payload.updated)
+  if (Number.isNaN(updated)) return []
+  const age = nowMs - updated
+  const fresh = age < staleAfterMs
+
+  // Shown fresh or not: when data goes stale the health rows disappear but
+  // this one stays and turns idle, so a broken pipeline reads as "last sync
+  // 9h ago" rather than the rows silently vanishing with no explanation.
+  const sync = {
+    label: 'Last sync',
+    value: relativeTime(age),
+    title: new Date(updated).toLocaleString(),
+    state: fresh ? 'ok' : 'idle'
+  }
+  if (!fresh) return [sync]
+
+  const { steps, heart, workout } = payload
+  const out = []
+
+  if (steps?.value != null) {
+    out.push({
+      label: 'Steps',
+      value: typeof steps.pctOfAverage === 'number'
+        ? `${steps.value.toLocaleString()} · ${steps.pctOfAverage}% of avg`
+        : steps.value.toLocaleString(),
+      state: steps.state ?? 'idle'
+    })
+  }
+
+  if (heart?.value != null) {
+    out.push({
+      label: 'Resting heart',
+      value: heart.label ? `${heart.label} · ${heart.value} bpm` : `${heart.value} bpm`,
+      state: heart.state ?? 'idle'
+    })
+  }
+
+  if (workout?.type) {
+    out.push({
+      label: 'Last workout',
+      value: `${workout.type}${workout.minutes ? ` · ${workout.minutes}m` : ''}`,
+      state: 'ok'
+    })
+  }
+
+  out.push(sync)
+  return out
 }

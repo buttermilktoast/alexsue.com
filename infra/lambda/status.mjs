@@ -17,6 +17,32 @@ export const BOUNDS = {
 
 const WORKOUT_TTL_MS = 72 * 60 * 60 * 1000
 
+// Shortcuts reports workout duration in seconds and has no convenient way to
+// emit an ISO timestamp, so accept what it can produce: a duration under
+// either key, and a missing end time meaning "just now". Keeping this lenient
+// is what lets the shortcut be three actions instead of six.
+function normaliseWorkout(workout, now) {
+  if (!workout || typeof workout !== 'object') return null
+
+  const type = typeof workout.type === 'string' ? workout.type.trim() : ''
+  // An empty type is how "no workout today" arrives; it is not an error, and
+  // it means the shortcut never needs a conditional branch to omit the field.
+  if (type === '') return null
+
+  const minutes = toNumber(workout.minutes)
+  const seconds = toNumber(workout.seconds ?? workout.durationSeconds ?? workout.duration)
+  const resolvedMinutes = minutes != null
+    ? minutes
+    : seconds != null ? Math.round(seconds / 60) : null
+
+  const parsed = Date.parse(workout.endedAt ?? '')
+  const endedAt = Number.isNaN(parsed) ? now.getTime() : parsed
+
+  // ISO string, matching the shape a carried-forward workout already has, so
+  // both paths can be handled identically downstream.
+  return { type, minutes: resolvedMinutes, endedAt: new Date(endedAt).toISOString() }
+}
+
 // Shortcuts sends health values as strings, and a multi-sample query arrives
 // as newline-separated text rather than a single figure. Accept a clean
 // numeric string, reject anything else -- "1200\n3400\n900" must not silently
@@ -143,7 +169,7 @@ export function computeStatus({ existing, input, now, config }) {
 
   // Carry a workout forward until it ages out, so the row disappears on its
   // own rather than advertising last week's run.
-  const workout = (input.workout?.type ? input.workout : null) ?? existing?.workout ?? null
+  const workout = normaliseWorkout(input.workout, now) ?? existing?.workout ?? null
   if (workout?.type) {
     const endedAt = Date.parse(workout.endedAt ?? '')
     if (!Number.isNaN(endedAt) && now.getTime() - endedAt < WORKOUT_TTL_MS) {
