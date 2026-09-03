@@ -39,9 +39,3 @@ The footer shows the first 7 characters and links to the exact commit. Locally,
 where these are unset, it shows `version development`.
 
 `public/CNAME` keeps the `alexsue.com` custom domain attached to each deploy.
-
-## One-time setup
-
-See [`SETUP.md`](SETUP.md) for the GitHub Pages settings and the DNS records
-for the apex domain and `www`, including the recorded baseline of the iCloud
-Mail records that must be left intact.
