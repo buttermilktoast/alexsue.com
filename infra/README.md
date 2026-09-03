@@ -108,13 +108,96 @@ aws s3 cp fixed.json s3://<bucket>/status.json \
 
 ## The phone side
 
-**iOS time-of-day automations fire once per day, not hourly.** For a handful of
-pushes a day, create three personal automations in Shortcuts (say 09:00, 15:00,
-21:00), each: *Find Health Samples* → *Get Contents of URL* (POST, JSON body,
-`Authorization` header). Turn off "Ask Before Running".
+Retrieve the push token first — it is stored only in the Lambda's environment:
 
-For genuine hourly granularity, an app like Health Auto Export can do scheduled
-REST pushes on an interval; point it at the same endpoint with the same header.
+```sh
+aws lambda get-function-configuration --function-name alexsue-status-push \
+  --query 'Environment.Variables.PUSH_TOKEN' --output text
+```
+
+There is no HealthKit credential. HealthKit has no server API and no key;
+authorization is the on-device permission sheet, which iOS shows the first
+time the shortcut runs. The push token is the only secret involved.
+
+### Shortcut 1: steps and resting heart rate
+
+Build this in the Shortcuts app (not as an automation yet, so it can be tested
+by hand). Actions in order:
+
+1. **Find Health Samples** — Type `Steps`, Filter `Start Date` `is today`.
+2. **Calculate Statistics** — Operation `Sum`, Input the samples from step 1.
+   Steps arrive as many small samples through the day; this is what turns them
+   into a daily total.
+3. **Find Health Samples** — Type `Resting Heart Rate`, Sort by `Start Date`,
+   Order `Latest First`, Limit `1`.
+4. **Text** — the request body, inserting the two variables:
+   ```
+   {"steps":[Statistics],"restingHeartRate":[Value]}
+   ```
+   Both must be bare numbers, not quoted. Tap the variable chip from step 3
+   and choose `Value` so it inserts the number rather than the sample object.
+5. **Get Contents of URL** — the function URL, Method `POST`, Request Body
+   `File` with the Text from step 4 as input. Headers:
+
+   | Key | Value |
+   |---|---|
+   | `Authorization` | `Bearer <token>` |
+   | `Content-Type` | `application/json` |
+
+Run it once from the Shortcuts app. iOS prompts for Health access on first
+run — grant Steps and Resting Heart Rate. A successful run returns the stored
+object; add a **Quick Look** action at the end while testing to see it.
+
+### Shortcut 2: adding the workout
+
+Workouts are optional in the payload, and the Lambda carries the last one
+forward until it ages out after 72 hours — so this can be added once the
+basic push works.
+
+Insert before the Text action:
+
+1. **Find Workouts** — Sort by `End Date`, Order `Latest First`, Limit `1`.
+2. **Format Date** on its `End Date` — format `ISO 8601`.
+3. **Calculate** — its `Duration` ÷ `60`, then **Round** to `0` decimal places.
+   Shortcuts reports duration in seconds; the API wants minutes.
+
+Then wrap the Text action in an **If** on whether Find Workouts returned
+anything, with a second Text action for the no-workout case — otherwise an
+empty result produces malformed JSON:
+
+```
+{"steps":[Statistics],"restingHeartRate":[Value],"workout":{"type":"[Type]","minutes":[Rounded],"endedAt":"[Formatted Date]"}}
+```
+
+Note which values are quoted: `type` and `endedAt` are strings, `minutes` is a
+bare number.
+
+### Turning it into an automation
+
+**iOS time-of-day automations fire once per day, not hourly.** For a few
+pushes a day, create one personal automation per time slot (Automation tab →
+`+` → Time of Day), each running the shortcut. Three — morning, afternoon,
+evening — is plenty; steps accumulate and the evening push is the one that
+sets the day's final total for the baseline fold.
+
+Turn **Run Immediately** on and **Notify When Run** off, or every push
+produces a banner.
+
+For genuine hourly granularity, an app like Health Auto Export can push to a
+REST endpoint on an interval; point it at the same URL with the same header.
+
+### If a push does not land
+
+```sh
+aws logs tail /aws/lambda/alexsue-status-push --since 15m --format short
+```
+
+- **401** — token mismatch; check for a missing `Bearer ` prefix or a trailing
+  space in the header value.
+- **No log entry at all** — the request never reached the function. See the
+  function URL permissions section above.
+- **200 but the site is unchanged** — the object updated, but the page only
+  polls hourly and ignores anything older than three hours. Reload it.
 
 ## Tests
 
