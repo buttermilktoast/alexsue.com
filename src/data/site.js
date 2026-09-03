@@ -24,7 +24,7 @@ export const site = {
       title: 'Between Us',
       description: 'Conversation cards to bring couples closer',
       url: 'https://betweenus-talk.web.app',
-      status: 'live',
+      status: 'live — iOS and Android next',
       tag: 'web'
     },
     {
@@ -79,9 +79,7 @@ export const site = {
     { label: 'Site', value: 'operational', state: 'ok' },
     { label: 'Side projects', value: 'too many', state: 'warn' },
     { label: 'Current device', value: 'MacBook', state: 'idle' },
-    { label: 'Listening', value: '—', state: 'idle' },
-    { label: 'Reading', value: '—', state: 'idle' },
-    { label: 'Playing', value: '—', state: 'idle' }
+    { label: 'Playing', value: 'Pragmata', state: 'idle' }
   ],
 
   links: [
