@@ -5,7 +5,6 @@ export const site = {
   domain: 'alexsue.com',
   name: 'Alex Sue',
   tagline: 'personal status dashboard',
-  email: 'alex@alexsue.com',
 
   now: {
     currentProject: {
@@ -71,8 +70,7 @@ export const site = {
 
   links: [
     { label: 'GitHub', href: 'https://github.com/buttermilktoast', external: true },
-    { label: 'Instagram', href: 'https://instagram.com/buttermilktoasty', external: true },
-    { label: 'alex@alexsue.com', href: 'mailto:alex@alexsue.com', external: false }
+    { label: 'Instagram', href: 'https://instagram.com/buttermilktoasty', external: true }
   ]
 }
 
