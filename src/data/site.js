@@ -54,11 +54,11 @@ export const site = {
   // the static rows below.
   live: {
     url: import.meta.env.VITE_STATUS_URL || null,
-    // Polling is anchored to page load, not the wall clock, so there is no
-    // phase to align with the hourly push -- every visitor already has a
-    // different offset. A shorter interval is what bounds the lag: a tab left
-    // open trails the latest push by at most this, rather than a full hour.
+    // Polls land on wall-clock slots at offsetMs past each interval -- :05,
+    // :20, :35 and :50 -- so a poll follows the phone's on-the-hour push by
+    // about five minutes instead of trailing it by up to a full interval.
     intervalMs: 15 * 60 * 1000,
+    offsetMs: 5 * 60 * 1000,
     staleAfterMs: 3 * 60 * 60 * 1000
   },
 

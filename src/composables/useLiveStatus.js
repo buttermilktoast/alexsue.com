@@ -9,7 +9,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const MINUTE = 60 * 1000
 
-export function useLiveStatus({ url, intervalMs, staleAfterMs }) {
+export function useLiveStatus({ url, intervalMs, staleAfterMs, offsetMs = 0 }) {
   const payload = ref(null)
   const failed = ref(false)
   const now = ref(Date.now())
@@ -44,13 +44,20 @@ export function useLiveStatus({ url, intervalMs, staleAfterMs }) {
     return inFlight
   }
 
+  // Aligned to the wall clock rather than to page load, so a poll lands just
+  // after the phone's scheduled push instead of at whatever arbitrary phase
+  // the visitor happened to arrive at.
   function startPolling() {
     stopPolling()
-    pollTimer = setInterval(load, intervalMs)
+    const delay = msUntilNextSlot(Date.now(), intervalMs, offsetMs) + jitterMs()
+    pollTimer = setTimeout(async () => {
+      await load()
+      startPolling()
+    }, delay)
   }
 
   function stopPolling() {
-    if (pollTimer) clearInterval(pollTimer)
+    if (pollTimer) clearTimeout(pollTimer)
     pollTimer = null
   }
 
@@ -59,7 +66,7 @@ export function useLiveStatus({ url, intervalMs, staleAfterMs }) {
       stopPolling()
       return
     }
-    // Catch up on whatever was missed while hidden, then resume the cadence.
+    // Catch up on whatever was missed while hidden, then rejoin the schedule.
     if (Date.now() - lastAttempt >= intervalMs) load()
     startPolling()
   }
@@ -90,6 +97,21 @@ export function useLiveStatus({ url, intervalMs, staleAfterMs }) {
   const rows = computed(() => buildRows(payload.value, now.value, staleAfterMs))
 
   return { rows, isFresh, failed, payload, refresh: load }
+}
+
+// Milliseconds until the next wall-clock slot: the instants where
+// (time - offset) divides evenly into interval. With a 15 minute interval and
+// a 5 minute offset those are :05, :20, :35 and :50 past each hour, which sit
+// just after a push scheduled on the hour.
+export function msUntilNextSlot(nowMs, intervalMs, offsetMs = 0) {
+  const since = (((nowMs - offsetMs) % intervalMs) + intervalMs) % intervalMs
+  return intervalMs - since
+}
+
+// Aligned polling means every open tab would otherwise fire at the same
+// instant. A few seconds of spread costs nothing and avoids that.
+function jitterMs() {
+  return Math.floor(Math.random() * 15000)
 }
 
 export function relativeTime(ms) {
