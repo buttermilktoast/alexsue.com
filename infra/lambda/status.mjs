@@ -17,6 +17,19 @@ export const BOUNDS = {
 
 const WORKOUT_TTL_MS = 72 * 60 * 60 * 1000
 
+// Shortcuts sends health values as strings, and a multi-sample query arrives
+// as newline-separated text rather than a single figure. Accept a clean
+// numeric string, reject anything else -- "1200\n3400\n900" must not silently
+// become 1200, since that would be a wrong reading rather than a missing one.
+export function toNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export function plausible(value, [min, max]) {
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
 }
@@ -71,12 +84,15 @@ export function computeStatus({ existing, input, now, config }) {
   // fields carry forward. Steps reset at the day boundary; heart rate is a
   // point-in-time sample, so the last one stands until replaced.
   const sameDay = previousDay === today
-  const steps = plausible(input.steps, BOUNDS.steps)
-    ? input.steps
+  const inputSteps = toNumber(input.steps)
+  const inputHeartRate = toNumber(input.restingHeartRate)
+
+  const steps = plausible(inputSteps, BOUNDS.steps)
+    ? inputSteps
     : (sameDay ? existing?.steps?.value ?? null : null)
 
-  const heartRate = plausible(input.restingHeartRate, BOUNDS.restingHeartRate)
-    ? input.restingHeartRate
+  const heartRate = plausible(inputHeartRate, BOUNDS.restingHeartRate)
+    ? inputHeartRate
     : existing?.heart?.value ?? null
 
   const baselineReady = baseline.days >= minBaselineDays
@@ -102,7 +118,9 @@ export function computeStatus({ existing, input, now, config }) {
     if (!Number.isNaN(endedAt) && now.getTime() - endedAt < WORKOUT_TTL_MS) {
       output.workout = {
         type: String(workout.type).slice(0, 40),
-        minutes: plausible(workout.minutes, BOUNDS.workoutMinutes) ? workout.minutes : null,
+        minutes: plausible(toNumber(workout.minutes), BOUNDS.workoutMinutes)
+          ? toNumber(workout.minutes)
+          : null,
         endedAt: new Date(endedAt).toISOString()
       }
     }

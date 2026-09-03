@@ -108,3 +108,30 @@ test('day boundary uses the configured timezone, not UTC', () => {
   const state = push(null, { steps: 7000 }, '2026-09-02T06:00:00Z')
   assert.equal(state.day, '2026-09-01')
 })
+
+test('numeric strings from Shortcuts are accepted', () => {
+  const state = push(null, { steps: '8231', restingHeartRate: '56' }, '2026-09-02T20:00:00Z')
+  assert.equal(state.steps.value, 8231)
+  assert.equal(state.heart.value, 56)
+})
+
+test('newline-separated sample text is rejected, not truncated', () => {
+  const seeded = push(null, { steps: 5000 }, '2026-09-02T20:00:00Z')
+  const messy = push(seeded, { steps: '1200\n3400\n900' }, '2026-09-02T22:00:00Z')
+  // Silently reading this as 1200 would be a wrong number, not a missing one.
+  assert.equal(messy.steps.value, 5000, 'previous value carried forward')
+})
+
+test('empty and non-numeric strings are rejected', () => {
+  const seeded = push(null, { steps: 5000, restingHeartRate: 58 }, '2026-09-02T20:00:00Z')
+  const blank = push(seeded, { steps: '', restingHeartRate: 'n/a' }, '2026-09-02T22:00:00Z')
+  assert.equal(blank.steps.value, 5000)
+  assert.equal(blank.heart.value, 58)
+})
+
+test('a workout duration sent as a string is accepted', () => {
+  const state = push(null,
+    { workout: { type: 'Outdoor Run', minutes: '32', endedAt: '2026-09-02T19:00:00Z' } },
+    '2026-09-02T20:00:00Z')
+  assert.equal(state.workout.minutes, 32)
+})
