@@ -234,3 +234,20 @@ test('flat fields still work when the name is missing', () => {
   assert.equal(noName.workout, undefined)
   assert.equal(noName.steps.value, 5200)
 })
+
+test('a heart rate under exertion is kept, not discarded', () => {
+  // The old resting-only ceiling of 120 would have thrown this away.
+  const state = push(null, { restingHeartRate: '148' }, '2026-09-02T20:00:00Z')
+  assert.equal(state.heart.value, 148)
+})
+
+test('heartRate is accepted as an alias for restingHeartRate', () => {
+  assert.equal(push(null, { heartRate: '66' }, '2026-09-02T20:00:00Z').heart.value, 66)
+  // The field the shortcut already sends still wins nothing away from it.
+  assert.equal(push(null, { restingHeartRate: '66' }, '2026-09-02T20:00:00Z').heart.value, 66)
+})
+
+test('a physiologically impossible rate is still rejected', () => {
+  const seeded = push(null, { restingHeartRate: 60 }, '2026-09-02T20:00:00Z')
+  assert.equal(push(seeded, { restingHeartRate: 400 }, '2026-09-02T21:00:00Z').heart.value, 60)
+})
