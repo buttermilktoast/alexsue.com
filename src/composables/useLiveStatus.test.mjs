@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildRows, relativeTime } from './useLiveStatus.js'
+import { buildRows, msUntilNextSlot, relativeTime } from './useLiveStatus.js'
 
 const STALE_AFTER = 3 * 60 * 60 * 1000
 const NOW = Date.parse('2026-09-03T12:00:00Z')
@@ -54,4 +54,30 @@ test('relative time reads naturally across the ranges', () => {
   assert.equal(relativeTime(12 * 60 * 1000), '12m ago')
   assert.equal(relativeTime(2 * 60 * 60 * 1000), '2h ago')
   assert.equal(relativeTime(50 * 60 * 60 * 1000), '2d ago')
+})
+
+test('polls land on wall-clock slots, five minutes past each quarter', () => {
+  const FIFTEEN = 15 * 60 * 1000
+  const OFFSET = 5 * 60 * 1000
+  const at = (iso) => Date.parse(iso)
+  const nextSlot = (iso) =>
+    new Date(at(iso) + msUntilNextSlot(at(iso), FIFTEEN, OFFSET)).toISOString()
+
+  assert.equal(nextSlot('2026-09-03T14:00:00Z'), '2026-09-03T14:05:00.000Z')
+  assert.equal(nextSlot('2026-09-03T14:06:00Z'), '2026-09-03T14:20:00.000Z')
+  assert.equal(nextSlot('2026-09-03T14:49:59Z'), '2026-09-03T14:50:00.000Z')
+  assert.equal(nextSlot('2026-09-03T14:51:00Z'), '2026-09-03T15:05:00.000Z')
+})
+
+test('a poll landing exactly on a slot waits for the next one, not zero', () => {
+  const FIFTEEN = 15 * 60 * 1000
+  const OFFSET = 5 * 60 * 1000
+  // Returning 0 here would spin: schedule, fire immediately, reschedule.
+  assert.equal(msUntilNextSlot(Date.parse('2026-09-03T14:05:00Z'), FIFTEEN, OFFSET), FIFTEEN)
+})
+
+test('slot maths holds with no offset and across the hour boundary', () => {
+  const HOUR = 60 * 60 * 1000
+  assert.equal(msUntilNextSlot(Date.parse('2026-09-03T14:30:00Z'), HOUR, 0), 30 * 60 * 1000)
+  assert.equal(msUntilNextSlot(Date.parse('2026-09-03T23:58:00Z'), HOUR, 0), 2 * 60 * 1000)
 })
