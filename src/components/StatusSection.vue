@@ -1,13 +1,21 @@
 <script setup>
+import { computed } from 'vue'
 import { site } from '../data/site.js'
+import { useLiveStatus } from '../composables/useLiveStatus.js'
 import SectionBlock from './SectionBlock.vue'
 import StatusDot from './StatusDot.vue'
+
+const { rows: liveRows } = useLiveStatus(site.live)
+
+// Live rows simply disappear when the data goes stale or the fetch fails,
+// leaving the hand-written rows behind.
+const statuses = computed(() => [...site.statuses, ...liveRows.value])
 </script>
 
 <template>
   <SectionBlock id="status" title="Status">
     <dl class="grid">
-      <div v-for="status in site.statuses" :key="status.label" class="entry">
+      <div v-for="status in statuses" :key="status.label" class="entry">
         <dt>{{ status.label }}</dt>
         <dd>
           <StatusDot :state="status.state" />

@@ -50,6 +50,15 @@ export const site = {
     }
   ],
 
+  // Live health data pushed from the phone to S3. Rows render only while the
+  // payload is fresher than staleAfterMs; otherwise the section falls back to
+  // the static rows below.
+  live: {
+    url: import.meta.env.VITE_STATUS_URL || null,
+    intervalMs: 60 * 60 * 1000,
+    staleAfterMs: 3 * 60 * 60 * 1000
+  },
+
   // state: 'ok' | 'warn' | 'idle'
   statuses: [
     { label: 'Site', value: 'operational', state: 'ok' },
