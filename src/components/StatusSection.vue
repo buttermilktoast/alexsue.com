@@ -19,7 +19,7 @@ const statuses = computed(() => [...site.statuses, ...liveRows.value])
         <dt>{{ status.label }}</dt>
         <dd>
           <StatusDot :state="status.state" />
-          <span>{{ status.value }}</span>
+          <span :title="status.title">{{ status.value }}</span>
         </dd>
       </div>
     </dl>

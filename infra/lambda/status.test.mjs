@@ -167,3 +167,24 @@ test('one unparseable entry rejects the whole total', () => {
 test('blank lines are ignored', () => {
   assert.equal(push(null, { steps: '1200\n\n3400\n' }, '2026-09-02T20:00:00Z').steps.value, 4600)
 })
+
+test('an empty workout type means no workout, not an error', () => {
+  const seeded = push(null, { steps: 5000 }, '2026-09-02T20:00:00Z')
+  const blank = push(seeded, { steps: 5100, workout: { type: '', minutes: '' } },
+    '2026-09-02T21:00:00Z')
+  assert.equal(blank.workout, undefined)
+  assert.equal(blank.steps.value, 5100, 'the rest of the push still lands')
+})
+
+test('workout duration is accepted in seconds', () => {
+  const state = push(null,
+    { workout: { type: 'Outdoor Run', seconds: '1920', endedAt: '2026-09-02T19:00:00Z' } },
+    '2026-09-02T20:00:00Z')
+  assert.equal(state.workout.minutes, 32)
+})
+
+test('a missing end time means the workout just happened', () => {
+  const state = push(null, { workout: { type: 'Yoga', minutes: 20 } }, '2026-09-02T20:00:00Z')
+  assert.equal(state.workout.type, 'Yoga')
+  assert.equal(state.workout.endedAt, '2026-09-02T20:00:00.000Z')
+})
