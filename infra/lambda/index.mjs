@@ -44,12 +44,41 @@ async function readExisting() {
 }
 
 export const handler = async (event) => {
-  if (!authorized(event)) return reply(401, { error: 'unauthorized' })
+  // Both early exits return in a few milliseconds without touching S3, which
+  // is indistinguishable from the outside. Log enough to tell them apart --
+  // never the token itself, only whether a credential arrived and how long it
+  // was, which is what actually goes wrong (missing "Bearer ", stray space).
+  if (!authorized(event)) {
+    const header = event.headers?.authorization || event.headers?.Authorization || ''
+    console.log(JSON.stringify({
+      outcome: 'unauthorized',
+      authHeaderPresent: header.length > 0,
+      hasBearerPrefix: /^Bearer\s+/i.test(header),
+      presentedTokenLength: header.replace(/^Bearer\s+/i, '').length,
+      expectedTokenLength: (TOKEN || '').length
+    }))
+    return reply(401, { error: 'unauthorized' })
+  }
+
+  // Function URLs base64-encode the body whenever the content type is not
+  // recognised as text -- which includes anything Shortcuts sends as a File
+  // rather than with an explicit application/json header.
+  const rawBody = event.isBase64Encoded
+    ? Buffer.from(event.body || '', 'base64').toString('utf8')
+    : (event.body || '')
 
   let input
   try {
-    input = JSON.parse(event.body || '{}')
+    input = JSON.parse(rawBody || '{}')
   } catch {
+    // The body is the useful thing here: it shows immediately if Shortcuts
+    // sent newline-separated sample text instead of a number.
+    console.log(JSON.stringify({
+      outcome: 'bad-body',
+      base64: Boolean(event.isBase64Encoded),
+      bodyLength: rawBody.length,
+      bodyPreview: rawBody.slice(0, 200)
+    }))
     return reply(400, { error: 'body must be JSON' })
   }
 
@@ -62,6 +91,14 @@ export const handler = async (event) => {
     Body: JSON.stringify(output),
     ContentType: 'application/json',
     CacheControl: `max-age=${MAX_AGE_SECONDS}`
+  }))
+
+  console.log(JSON.stringify({
+    outcome: 'ok',
+    steps: output.steps?.value ?? null,
+    heart: output.heart?.value ?? null,
+    workout: output.workout?.type ?? null,
+    baselineDays: output._baseline.days
   }))
 
   return reply(200, output)
