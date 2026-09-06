@@ -28,6 +28,14 @@ export const site = {
       tag: 'web'
     },
     {
+      emoji: '⚡',
+      title: 'HECO Rate Tracker',
+      description: "See what you're really paying per kWh",
+      url: 'https://teslalease.web.app/',
+      status: 'live',
+      tag: 'web'
+    },
+    {
       emoji: '🚗',
       title: 'Hawaiʻi Permit Prep',
       description: "Practice tests for the Hawaiʻi driver's permit exam",
