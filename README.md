@@ -2,10 +2,6 @@
 
 A small static personal status dashboard. Vue 3 + Vite, deployed to GitHub Pages.
 
-See [Features and upcoming ideas](plans/features.md) for implemented features,
-dashboard candidates, and verified iOS Shortcuts capabilities. The
-[original website brief](plans/website.md) records the v1 design.
-
 ## Develop
 
 ```sh

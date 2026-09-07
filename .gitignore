@@ -10,3 +10,6 @@ dist/
 shortcuts/*.shortcut
 shortcuts/*.plist
 shortcuts/__pycache__/
+
+# Planning notes are kept locally, not published with the public repo.
+plans/
