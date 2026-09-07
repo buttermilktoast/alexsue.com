@@ -72,18 +72,29 @@ optional; whatever is omitted carries forward from the previous object.
 
 ```json
 {
-  "steps": 6412,
-  "restingHeartRate": 62,
+  "stepsBySource": { "phone": "318;294", "watch": "401;259" },
+  "heartRate": 62,
   "workout": { "type": "Outdoor Run", "minutes": 32, "endedAt": "2026-09-02T17:00:00Z" }
 }
 ```
+
+`stepsBySource` holds one raw sample list per source. Each is totalled and the
+**largest total wins** — never the sum, which double-counts a walk the phone
+and the watch both recorded. A source that is empty or unparseable drops out
+rather than voiding the push, so a day with the watch on the charger reads the
+phone's count instead of zero. `stepsLast24hBySource` and
+`stepsYesterdayBySource` work identically for the baseline inputs.
+
+The flat `steps`, `stepsLast24h` and `stepsYesterday` fields still work and are
+read as a single source. `restingHeartRate` is accepted as an alias for
+`heartRate`.
 
 Values outside these bounds are discarded rather than stored:
 
 | Field | Accepted range |
 |---|---|
-| `steps` | 0 – 100,000 |
-| `restingHeartRate` | 30 – 120 |
+| `steps` (each source) | 0 – 100,000 |
+| `heartRate` | 30 – 220 |
 | `workout.minutes` | 0 – 1,440 |
 
 ## How the baseline works
@@ -119,40 +130,42 @@ There is no HealthKit credential. HealthKit has no server API and no key;
 authorization is the on-device permission sheet, which iOS shows the first
 time the shortcut runs. The push token is the only secret involved.
 
-### Shortcut 1: steps and resting heart rate
+### Shortcut 1: alexsue.com Dashboard
 
-Build this in the Shortcuts app (not as an automation yet, so it can be tested
-by hand). Actions in order:
+Use [the shortcut installation guide](../shortcuts/README.md). Push v9
+preserves the user's tested preview and replaces only its final display with
+the upload action. It sends today's separate phone/watch values and latest
+Heart Rate. The endpoint selects the larger device total, an approximation
+rather than Apple Health's merged total.
 
-1. **Find All Health Samples Where** — Type `Steps`, Filter `Start Date`
-   `is today`. **No limit** — a limit of 1 returns only the most recent
-   sample, which is a handful of steps rather than the day's total.
-2. **Combine Text** — separator `;`. The samples must reach the endpoint on a
-   single line: a JSON string cannot contain raw newlines, so pasting a
-   multi-line list into the body produces a 400. The total is calculated
-   server-side, so no `Calculate Statistics` action is needed.
-3. **Find All Health Samples Where** — Type `Resting Heart Rate`, Sort by
-   `Start Date`, Order `Latest First`, Limit `1`. Here a limit of 1 is correct:
-   it is a point-in-time reading, not something to accumulate.
-4. **Text** — the request body, inserting the two variables:
-   ```
-   {"steps":"[Combined Text]","restingHeartRate":"[Value]"}
-   ```
-   Quoting these as strings is deliberate. Shortcuts sends values as text, and
-   the endpoint coerces them, so quoted numbers are accepted; `steps` may be a
-   single number, a `;`-separated list, a newline-separated list, or a JSON
-   array, and is totalled on arrival.
-5. **Get Contents of URL** — the function URL, Method `POST`, Request Body
-   `File` with the Text from step 4 as input. Headers:
+```sh
+python3 shortcuts/build.py \
+  --from-shortcut '/path/to/Send Health Data.shortcut' \
+  --from-preview '/path/to/Dashboard Preview v8.shortcut'
+```
 
-   | Key | Value |
-   |---|---|
-   | `Authorization` | `Bearer <token>` |
-   | `Content-Type` | `application/json` |
+The working watch name is `alex’s Apple Watch` with a curly apostrophe; the
+straight-apostrophe name previously returned no data. Source picker values
+must use `Values.Enumeration`. v6 used `Values.String`, which iOS ignored.
+Do not activate Push v6 or v8. Validate alexsue.com Dashboard on the phone, then retarget
+existing personal automations. Importing does not update automations.
 
-Run it once from the Shortcuts app. iOS prompts for Health access on first
-run — grant Steps and Resting Heart Rate. A successful run returns the stored
-object; add a **Quick Look** action at the end while testing to see it.
+Signed exports can be decoded using `shortcuts/read_shortcut.py` without
+running them. Generated files embed the push token and remain git-ignored.
+
+### Optional: a better baseline
+
+The baseline prefers a rolling 24-hour total over inferring the day from the
+last push, because HealthKit cannot be read while the device is locked and a
+late-night automation frequently never runs at all. To supply one, add separate phone/watch queries with the date filter set to `is within the last 1 day`, into
+variables `phone24h` and `watch24h`, and extend the body:
+
+```
+{"stepsBySource":{"phone":"[phoneToday]","watch":"[watchToday]"},"stepsLast24hBySource":{"phone":"[phone24h]","watch":"[watch24h]"},"heartRate":"[heart]"}
+```
+
+This uses the same larger-source approximation. It prevents adding both
+devices together, but does not repair already-inflated baseline history.
 
 ### Shortcut 2: adding the workout
 
@@ -160,16 +173,21 @@ Workouts are optional in the payload, and the Lambda carries the last one
 forward until it ages out after 72 hours — so this can be added once the
 basic push works.
 
-Insert before the Text action:
+This requires a workout-reading action supplied by another app; the earlier
+instructions incorrectly described **Find Workouts** as a built-in action.
+Apple documents [Apple Watch workout start/end triggers](https://support.apple.com/guide/shortcuts/event-triggers-apd932ff833f/ios),
+which launch automations but do not establish access to completed workout records.
+The free [Actions app](https://sindresorhus.com/actions) provides an iOS-only
+**Find Workout** action that returns workout type, duration, and other details.
 
-1. **Find Workouts** — Sort by `End Date`, Order `Latest First`, Limit `1`.
-2. **Format Date** on its `End Date` — format `ISO 8601`.
-3. **Calculate** — its `Duration` ÷ `60`, then **Round** to `0` decimal places.
-   Shortcuts reports duration in seconds; the API wants minutes.
+If you use that app, inspect one returned workout with **Quick Look** first.
+Map its type to `type`, its end date formatted as ISO 8601 to `endedAt`, and its
+duration converted to whole minutes to `minutes`. Check the duration's unit in
+the action output before converting it. This optional route has not been tested
+on a device here.
 
-Then wrap the Text action in an **If** on whether Find Workouts returned
-anything, with a second Text action for the no-workout case — otherwise an
-empty result produces malformed JSON:
+Only include the `workout` object when a workout was returned; otherwise send
+the ordinary steps/heart-rate payload:
 
 ```
 {"steps":[Statistics],"restingHeartRate":[Value],"workout":{"type":"[Type]","minutes":[Rounded],"endedAt":"[Formatted Date]"}}
@@ -189,8 +207,11 @@ sets the day's final total for the baseline fold.
 Turn **Run Immediately** on and **Notify When Run** off, or every push
 produces a banner.
 
-For genuine hourly granularity, an app like Health Auto Export can push to a
-REST endpoint on an interval; point it at the same URL with the same header.
+For hourly updates, use 24 daily Time of Day automations, one at each hour
+from 00:00 through 23:00, running alexsue.com Dashboard. The generated
+`alexsue.com Dashboard.shortcut` embeds those 24 triggers while preserving
+v9's actions; importing and activating the triggers still needs on-device
+verification. See [hourly installation and verification](../shortcuts/README.md#hourly-variant).
 
 ### If a push does not land
 

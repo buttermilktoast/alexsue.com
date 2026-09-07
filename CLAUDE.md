@@ -73,9 +73,21 @@ its own accumulator forward under `_baseline`.
   these two files; the AWS SDK comes from the runtime.
 - `infra/deploy.sh` / `infra/teardown.sh` — idempotent create-or-update; the push
   token is generated once and preserved.
+- `shortcuts/` — the iOS Shortcut is built, not hand-assembled.
+  `dashboard.template.json` holds the verified actions with `{TOKEN}` and
+  `{ENDPOINT}` placeholders; `build.py` substitutes them from `.env` and signs.
+  This repo is public, so neither the token nor the Function URL is committed,
+  and the generated `.shortcut` files are git-ignored. `python3 -m unittest
+  discover -s shortcuts` covers it.
 - **`infra/README.md` is the detailed reference** — the push contract, the
   baseline math and how to hand-fix a skewed one, Function URL permission quirks,
   and the full iOS Shortcuts build. Read it before touching the pipeline.
+
+Steps arrive as one raw sample list per source (`stepsBySource`) and the
+**largest total wins, never the sum** — the phone and the watch both record the
+same walk, and adding them reported a ~12,000-step day as 25,905. It is not
+Apple Health's merged total, but a day with the watch on the charger reads the
+phone's count instead of zero. The flat `steps` field still works.
 
 The wire field `restingHeartRate` is kept for compatibility with the shortcut
 already deployed; `heartRate` is the accepted truer name. Heart rate is reported

@@ -1,0 +1,595 @@
+{
+  "WFQuickActionSurfaces": [],
+  "WFWorkflowActions": [
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
+      "WFWorkflowActionParameters": {
+        "UUID": "F78FCAE6-7D4A-A998-19FF-5891FD3C38D1",
+        "WFCommentActionText": "Today's approximate steps = the larger phone/watch total. This does not reproduce Apple Health's merged count. Source names must match Health. Heart rate is today's latest reading. Empty data is sent as blank, not zero."
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.nothing",
+      "WFWorkflowActionParameters": {
+        "UUID": "EF6E1ED5-4B5B-66FB-2849-0ADEB384B5B7"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+      "WFWorkflowActionParameters": {
+        "UUID": "B170B553-38A5-E9E4-6507-EE95F32FDF6A",
+        "WFContentItemFilter": {
+          "Value": {
+            "WFActionParameterFilterPrefix": 1,
+            "WFActionParameterFilterTemplates": [
+              {
+                "Bounded": true,
+                "Operator": 4,
+                "Property": "Type",
+                "Removable": false,
+                "Values": {
+                  "Enumeration": {
+                    "Value": "Steps",
+                    "WFSerializationType": "WFStringSubstitutableState"
+                  }
+                }
+              },
+              {
+                "Operator": 1002,
+                "Property": "Start Date",
+                "Removable": true,
+                "Values": {}
+              },
+              {
+                "Operator": 4,
+                "Property": "Source",
+                "Removable": true,
+                "Values": {
+                  "Enumeration": {
+                    "Value": "Alex iPhone 17",
+                    "WFSerializationType": "WFStringSubstitutableState"
+                  },
+                  "Unit": 4
+                }
+              }
+            ],
+            "WFContentPredicateBoundedDate": false
+          },
+          "WFSerializationType": "WFContentPredicateTableTemplate"
+        },
+        "WFContentItemLimitEnabled": false,
+        "WFContentItemSortOrder": "Ascending",
+        "WFContentItemSortProperty": "Start Date",
+        "WFHKSampleFilteringFillMissing": false,
+        "WFHKSampleFilteringGroupBy": "Day"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.properties.health.quantity",
+      "WFWorkflowActionParameters": {
+        "UUID": "F0911AD9-2422-9A5F-A382-8911D78FFAE6",
+        "WFContentItemPropertyName": "Value",
+        "WFInput": {
+          "Value": {
+            "OutputName": "Health Samples",
+            "OutputUUID": "B170B553-38A5-E9E4-6507-EE95F32FDF6A",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.text.combine",
+      "WFWorkflowActionParameters": {
+        "UUID": "5AA6936E-539C-73D7-876E-CB25945C0904",
+        "WFTextCustomSeparator": ";",
+        "WFTextSeparator": "Custom",
+        "text": {
+          "Value": {
+            "OutputName": "Value",
+            "OutputUUID": "F0911AD9-2422-9A5F-A382-8911D78FFAE6",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
+      "WFWorkflowActionParameters": {
+        "UUID": "0E0F02B5-3EBA-246B-42A4-535BEAFCE49A",
+        "WFInput": {
+          "Value": {
+            "OutputName": "Combined Text",
+            "OutputUUID": "5AA6936E-539C-73D7-876E-CB25945C0904",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        },
+        "WFVariableName": "phoneToday"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.nothing",
+      "WFWorkflowActionParameters": {
+        "UUID": "4647A67C-79D1-4178-8251-FE6F28B25E1F"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+      "WFWorkflowActionParameters": {
+        "UUID": "6951452C-5025-8C18-9ACF-EAE8924D3B81",
+        "WFContentItemFilter": {
+          "Value": {
+            "WFActionParameterFilterPrefix": 1,
+            "WFActionParameterFilterTemplates": [
+              {
+                "Bounded": true,
+                "Operator": 4,
+                "Property": "Type",
+                "Removable": false,
+                "Values": {
+                  "Enumeration": {
+                    "Value": "Steps",
+                    "WFSerializationType": "WFStringSubstitutableState"
+                  }
+                }
+              },
+              {
+                "Operator": 1002,
+                "Property": "Start Date",
+                "Removable": true,
+                "Values": {}
+              },
+              {
+                "Operator": 4,
+                "Property": "Source",
+                "Removable": true,
+                "Values": {
+                  "Enumeration": {
+                    "Value": "alex’s Apple Watch",
+                    "WFSerializationType": "WFStringSubstitutableState"
+                  },
+                  "Unit": 4
+                }
+              }
+            ],
+            "WFContentPredicateBoundedDate": false
+          },
+          "WFSerializationType": "WFContentPredicateTableTemplate"
+        },
+        "WFContentItemLimitEnabled": false,
+        "WFContentItemSortOrder": "Ascending",
+        "WFContentItemSortProperty": "Start Date",
+        "WFHKSampleFilteringGroupBy": "Day"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.properties.health.quantity",
+      "WFWorkflowActionParameters": {
+        "UUID": "93CB1F06-D86C-9383-6161-3648B9383F1F",
+        "WFContentItemPropertyName": "Value",
+        "WFInput": {
+          "Value": {
+            "OutputName": "Health Samples",
+            "OutputUUID": "6951452C-5025-8C18-9ACF-EAE8924D3B81",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.text.combine",
+      "WFWorkflowActionParameters": {
+        "UUID": "933443FE-393C-0194-8550-FF61B0D7F9F6",
+        "WFTextCustomSeparator": ";",
+        "WFTextSeparator": "Custom",
+        "text": {
+          "Value": {
+            "OutputName": "Value",
+            "OutputUUID": "93CB1F06-D86C-9383-6161-3648B9383F1F",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
+      "WFWorkflowActionParameters": {
+        "UUID": "EF67EA19-36E7-96F4-2F4E-9CEBD2081E2F",
+        "WFInput": {
+          "Value": {
+            "OutputName": "Combined Text",
+            "OutputUUID": "933443FE-393C-0194-8550-FF61B0D7F9F6",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        },
+        "WFVariableName": "watchToday"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.nothing",
+      "WFWorkflowActionParameters": {
+        "UUID": "8639165F-B984-C5A1-57D0-AD379B2EF187"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.filter.health.quantity",
+      "WFWorkflowActionParameters": {
+        "UUID": "3CB968A9-8208-0BE1-D7A5-DF98DC49673A",
+        "WFContentItemFilter": {
+          "Value": {
+            "WFActionParameterFilterPrefix": 1,
+            "WFActionParameterFilterTemplates": [
+              {
+                "Bounded": true,
+                "Operator": 4,
+                "Property": "Type",
+                "Removable": false,
+                "Values": {
+                  "Enumeration": {
+                    "Value": "Heart Rate",
+                    "WFSerializationType": "WFStringSubstitutableState"
+                  }
+                }
+              },
+              {
+                "Operator": 1002,
+                "Property": "Start Date",
+                "Removable": true,
+                "Values": {}
+              }
+            ],
+            "WFContentPredicateBoundedDate": false
+          },
+          "WFSerializationType": "WFContentPredicateTableTemplate"
+        },
+        "WFContentItemLimitEnabled": true,
+        "WFContentItemLimitNumber": 1,
+        "WFContentItemSortOrder": "Descending",
+        "WFContentItemSortProperty": "Start Date"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.properties.health.quantity",
+      "WFWorkflowActionParameters": {
+        "UUID": "A2CEA495-B80C-2F59-CB3E-C267A090FBF6",
+        "WFContentItemPropertyName": "Value",
+        "WFInput": {
+          "Value": {
+            "OutputName": "Health Samples",
+            "OutputUUID": "3CB968A9-8208-0BE1-D7A5-DF98DC49673A",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.text.combine",
+      "WFWorkflowActionParameters": {
+        "UUID": "EAB09DE2-A6E2-938A-DB93-373C0DCE39B0",
+        "WFTextCustomSeparator": ";",
+        "WFTextSeparator": "Custom",
+        "text": {
+          "Value": {
+            "OutputName": "Value",
+            "OutputUUID": "A2CEA495-B80C-2F59-CB3E-C267A090FBF6",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.setvariable",
+      "WFWorkflowActionParameters": {
+        "UUID": "CD437D8E-F6D8-3F4A-CFA4-21698571AB94",
+        "WFInput": {
+          "Value": {
+            "OutputName": "Combined Text",
+            "OutputUUID": "EAB09DE2-A6E2-938A-DB93-373C0DCE39B0",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        },
+        "WFVariableName": "heart"
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.gettext",
+      "WFWorkflowActionParameters": {
+        "UUID": "230D8358-DC8E-8890-B4C5-8DEEB62912EE",
+        "WFTextActionText": {
+          "Value": {
+            "attachmentsByRange": {
+              "{27, 1}": {
+                "Type": "Variable",
+                "VariableName": "phoneToday"
+              },
+              "{39, 1}": {
+                "Type": "Variable",
+                "VariableName": "watchToday"
+              },
+              "{56, 1}": {
+                "Type": "Variable",
+                "VariableName": "heart"
+              }
+            },
+            "string": "{\"stepsBySource\":{\"phone\":\"￼\",\"watch\":\"￼\"},\"heartRate\":\"￼\"}"
+          },
+          "WFSerializationType": "WFTextTokenString"
+        }
+      }
+    },
+    {
+      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
+      "WFWorkflowActionParameters": {
+        "ShowHeaders": true,
+        "UUID": "72231043-BC18-07E6-F740-B235EB7511EC",
+        "WFHTTPBodyType": "File",
+        "WFHTTPHeaders": {
+          "Value": {
+            "WFDictionaryFieldValueItems": [
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "Authorization"
+                  },
+                  "WFSerializationType": "WFTextTokenString"
+                },
+                "WFValue": {
+                  "Value": {
+                    "string": "Bearer {TOKEN}"
+                  },
+                  "WFSerializationType": "WFTextTokenString"
+                }
+              },
+              {
+                "WFItemType": 0,
+                "WFKey": {
+                  "Value": {
+                    "string": "Content-Type"
+                  },
+                  "WFSerializationType": "WFTextTokenString"
+                },
+                "WFValue": {
+                  "Value": {
+                    "string": "application/json"
+                  },
+                  "WFSerializationType": "WFTextTokenString"
+                }
+              }
+            ]
+          },
+          "WFSerializationType": "WFDictionaryFieldValue"
+        },
+        "WFHTTPMethod": "POST",
+        "WFRequestVariable": {
+          "Value": {
+            "OutputName": "Text",
+            "OutputUUID": "230D8358-DC8E-8890-B4C5-8DEEB62912EE",
+            "Type": "ActionOutput"
+          },
+          "WFSerializationType": "WFTextTokenAttachment"
+        },
+        "WFURL": "{ENDPOINT}"
+      }
+    }
+  ],
+  "WFWorkflowClientVersion": "5037.0.17",
+  "WFWorkflowHasOutputFallback": false,
+  "WFWorkflowHasShortcutInputVariables": false,
+  "WFWorkflowIcon": {
+    "WFWorkflowIconGlyphNumber": 59754,
+    "WFWorkflowIconStartColor": 946986751
+  },
+  "WFWorkflowImportQuestions": [],
+  "WFWorkflowInputContentItemClasses": [],
+  "WFWorkflowMinimumClientVersion": 900,
+  "WFWorkflowMinimumClientVersionString": "900",
+  "WFWorkflowOutputContentItemClasses": [],
+  "WFWorkflowTriggers": [
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T10:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "E5777565-DCB2-5E80-BA05-E4B23DA011A0"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T11:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "0CFA9400-00EF-5137-9B0E-95D747853814"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T12:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "4FDEE00B-AFC4-59FA-956E-0EAD0ABF96BF"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T13:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "948727FF-CDF3-5AEC-9F41-81AB5F1BA5AF"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T14:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "75E4CE7D-83C8-529B-B304-CA9839432683"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T15:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "9FFB8335-588D-56D8-97AD-6BA39F69404D"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T16:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "7A2FD383-5E8A-5AC0-B9E7-24E384E0186C"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T17:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "0648D567-DF58-5548-A868-D98AA8AB80F9"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T18:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "1F1384BA-C118-5C07-8532-81C1E56040F3"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T19:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "C812E070-AD9A-579D-801A-48AB56D30A32"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T20:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "48603784-D8DE-56DC-BD62-7101EFC9FD71"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T21:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "9024AD75-9107-5CC9-B8D2-E26856C87E80"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T22:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "3FDF861A-521D-5973-B4B1-E81AF0F9A3ED"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-30T23:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "3E8D18BB-2B96-5AA0-8F4E-92DEEAE38EF2"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T00:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "01F42B02-94AD-54D2-8CA2-137A105EC5BD"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T01:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "D5920499-D8AD-5087-BAB4-81F2EC5AE32A"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T02:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "DC233CCB-93CB-50BA-AA4E-F66A4FEDD899"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T03:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "A88210A9-6956-57B1-B175-BE2058A8CC07"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T04:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "9974FEF4-448A-5F0E-86B2-6A04EBEFF42F"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T05:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "A0130C5D-C1E1-5EEC-8DF4-6FEE7DCB8E19"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T06:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "8B2DFA73-F223-5FFC-BC12-F8FDEEC20AF7"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T07:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "D1D56858-4E7B-5567-9231-D92FB28F52A6"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T08:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "81D8B1B0-F3A1-52DA-9725-55BC96F3E25B"
+    },
+    {
+      "WFTriggerIdentifier": "WFTimeOfDayTrigger",
+      "WFTriggerSerializedParameters": {
+        "WFTime": "__WF_DATE_0000-12-31T09:31:26Z__",
+        "WFTimeEvent": "time"
+      },
+      "WFTriggerUUID": "0D7355E4-A105-55FD-84BD-CEDA0590FF78"
+    }
+  ],
+  "WFWorkflowTypes": [
+    "Watch",
+    "WFWorkflowTypeShowInSearch"
+  ]
+}

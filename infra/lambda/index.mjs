@@ -4,7 +4,7 @@
 
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { timingSafeEqual } from 'node:crypto'
-import { computeStatus, toStepTotal, toNumber } from './status.mjs'
+import { computeStatus, stepTotalFrom, toNumber } from './status.mjs'
 
 const s3 = new S3Client({})
 
@@ -57,6 +57,28 @@ async function readExisting() {
     throw error
   }
 }
+
+// A day of raw step samples is thousands of characters and would bury every
+// other field in the log line. Shorten any sample list to its head plus a
+// count, including the per-source lists nested under a *BySource object,
+// which is where the interesting question -- did both sources report? -- now
+// lives.
+const SAMPLE_PREVIEW = 120
+
+const shorten = (value) => {
+  if (typeof value !== 'string' || value.length <= SAMPLE_PREVIEW) return value
+  const samples = value.split(/[\n\r;]+/).filter(Boolean).length
+  return `${value.slice(0, SAMPLE_PREVIEW)}… (${samples} samples)`
+}
+
+const summarise = (input) => Object.fromEntries(
+  Object.entries(input).map(([key, value]) => [
+    key,
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shorten(v)]))
+      : shorten(value)
+  ])
+)
 
 export const handler = async (event) => {
   // Both early exits return in a few milliseconds without touching S3, which
@@ -113,15 +135,12 @@ export const handler = async (event) => {
   // nothing valid is indistinguishable from a good one.
   // Judge usability with the same coercion the computation uses, or a value
   // that parsed perfectly is reported as unusable.
-  const usable = toStepTotal(input.steps) !== null || toNumber(input.restingHeartRate) !== null
+  const usable = stepTotalFrom(input, 'steps') !== null
+    || toNumber(input.heartRate ?? input.restingHeartRate) !== null
+    || Boolean(output.workout?.type)
   console.log(JSON.stringify({
     outcome: usable ? 'ok' : 'ok-but-nothing-usable',
-    received: {
-      ...input,
-      steps: typeof input.steps === 'string' && input.steps.length > 120
-        ? `${input.steps.slice(0, 120)}… (${input.steps.split(/[\n\r;]+/).filter(Boolean).length} samples)`
-        : input.steps
-    },
+    received: summarise(input),
     receivedTypes: Object.fromEntries(
       Object.entries(input).map(([k, v]) => [k, Array.isArray(v) ? 'array' : typeof v])
     ),

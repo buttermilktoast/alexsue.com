@@ -40,16 +40,25 @@ function normaliseWorkout(input, now, timeZone) {
   // it means the shortcut never needs a conditional branch to omit the field.
   if (type === '') return null
 
+  const startedAt = parseTimestamp(workout.startedAt, timeZone)
+  const parsed = parseTimestamp(workout.endedAt, timeZone)
+  const endedAt = parsed == null ? now.getTime() : parsed
+
+  // Shortcuts formats a Workout's own Duration inconsistently ("25 min",
+  // "1,503", a clock string), so the shortcut is better off sending the
+  // start and end dates and letting the span stand in when no explicit
+  // duration came through.
+  const spanMinutes = startedAt != null && parsed != null && parsed > startedAt
+    ? Math.round((parsed - startedAt) / 60000)
+    : null
+
   const minutes = toNumber(workout.minutes)
   const seconds = toNumber(workout.seconds ?? workout.durationSeconds)
   const resolvedMinutes = minutes != null
     ? minutes
     : seconds != null
       ? Math.round(seconds / 60)
-      : parseDuration(workout.duration)
-
-  const parsed = parseTimestamp(workout.endedAt, timeZone)
-  const endedAt = parsed == null ? now.getTime() : parsed
+      : parseDuration(workout.duration) ?? spanMinutes
 
   // ISO string, matching the shape a carried-forward workout already has, so
   // both paths can be handled identically downstream.
@@ -194,6 +203,31 @@ export function toStepTotal(value) {
   return counted === 0 ? null : Math.round(total)
 }
 
+// Steps for one stretch of walking are recorded by the phone and the watch
+// both. Health resolves the overlap by picking a single source per interval;
+// a raw sample query cannot, and summing across sources counts the walk
+// twice -- which is what the first shortcut did, reporting 25,905 steps for a
+// day that was closer to 12,000.
+//
+// So the shortcut sends one sample list per source and the larger total wins.
+// It is not what Health computes, but it has the property that matters: a day
+// with the watch left on the charger reads the phone's count rather than
+// zero, and a day with the phone on a desk reads the watch's.
+export function stepTotalFrom(input, field) {
+  const bySource = input?.[`${field}BySource`]
+  if (bySource && typeof bySource === 'object') {
+    // A source that is absent or unparseable drops out rather than voiding
+    // the push: one working source is still a usable reading, no sources is
+    // not. Only the all-sources-failed case falls through to the flat field.
+    const totals = (Array.isArray(bySource) ? bySource : Object.values(bySource))
+      .map(toStepTotal)
+      .filter((total) => total != null)
+    if (totals.length > 0) return Math.max(...totals)
+  }
+  // The flat field is what the original shortcut sends, and stays supported.
+  return toStepTotal(input?.[field])
+}
+
 export function plausible(value, [min, max]) {
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
 }
@@ -233,14 +267,14 @@ export function computeStatus({ existing, input, now, config }) {
   // mid-morning sample into a daily average would drag the baseline down.
   const previousDay = existing?.day ?? null
 
-  const inputSteps = toStepTotal(input.steps)
+  const inputSteps = stepTotalFrom(input, 'steps')
   // The wire field is still restingHeartRate for compatibility with the
   // shortcut already in the field; heartRate is accepted as the truer name.
   const inputHeartRate = toNumber(input.heartRate ?? input.restingHeartRate)
 
   const yesterday = previousDate(today)
-  const statedYesterday = toStepTotal(input.stepsYesterday)
-  const rolling = toStepTotal(input.stepsLast24h)
+  const statedYesterday = stepTotalFrom(input, 'stepsYesterday')
+  const rolling = stepTotalFrom(input, 'stepsLast24h')
 
   if (plausible(statedYesterday, BOUNDS.steps) && baseline.lastFolded !== yesterday) {
     // Best case: a true calendar-day total. Exact, and immune to when the

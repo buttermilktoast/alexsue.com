@@ -4,3 +4,9 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Signed shortcuts embed the Lambda push token in a Get Contents of URL
+# header. Regenerate them with shortcuts/build.py instead of committing.
+shortcuts/*.shortcut
+shortcuts/*.plist
+shortcuts/__pycache__/

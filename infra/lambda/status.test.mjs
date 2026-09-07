@@ -185,6 +185,28 @@ test('workout duration is accepted in seconds', () => {
   assert.equal(state.workout.minutes, 32)
 })
 
+test('minutes are inferred from the start and end dates when no duration is sent', () => {
+  const state = push(null,
+    { workout: {
+      type: 'Outdoor Run',
+      startedAt: '2026-09-02T18:28:00Z',
+      endedAt: '2026-09-02T19:00:00Z'
+    } },
+    '2026-09-02T19:05:00Z')
+  assert.equal(state.workout.minutes, 32)
+})
+
+test('an explicit duration still wins over the start/end span', () => {
+  const state = push(null,
+    { workout: {
+      type: 'Outdoor Run', minutes: 30,
+      startedAt: '2026-09-02T18:00:00Z',
+      endedAt: '2026-09-02T19:00:00Z'
+    } },
+    '2026-09-02T19:05:00Z')
+  assert.equal(state.workout.minutes, 30)
+})
+
 test('a missing end time means the workout just happened', () => {
   const state = push(null, { workout: { type: 'Yoga', minutes: 20 } }, '2026-09-02T20:00:00Z')
   assert.equal(state.workout.type, 'Yoga')
@@ -347,4 +369,55 @@ test('an explicit calendar total is preferred over the rolling one', () => {
     '2026-09-03T20:00:00Z')
   assert.equal(state._baseline.stepsAvg, 12000, 'exact total wins')
   assert.equal(state._baseline.lastFolded, '2026-09-02')
+})
+
+test('per-source step lists resolve to the largest source, not their sum', () => {
+  // The bug this exists to prevent: the phone and the watch both record the
+  // same walk, and summing them reported a ~12,000 step day as 25,905.
+  const out = push(null, {
+    stepsBySource: { phone: '300;312', watch: '250;410' }
+  }, '2026-09-06T20:00:00Z')
+  assert.equal(out.steps.value, 660)
+})
+
+test('a source that reported nothing does not drag the total to zero', () => {
+  const watchOnCharger = push(null, {
+    stepsBySource: { phone: '9800', watch: '' }
+  }, '2026-09-06T20:00:00Z')
+  assert.equal(watchOnCharger.steps.value, 9800)
+
+  const phoneOnDesk = push(null, {
+    stepsBySource: { phone: '120', watch: '11200' }
+  }, '2026-09-06T20:00:00Z')
+  assert.equal(phoneOnDesk.steps.value, 11200)
+})
+
+test('the flat steps field still works for the shortcut already deployed', () => {
+  const out = push(null, { steps: '400;260' }, '2026-09-06T20:00:00Z')
+  assert.equal(out.steps.value, 660)
+})
+
+test('an all-sources-unusable object falls back to the flat field', () => {
+  const out = push(null, {
+    steps: '660',
+    stepsBySource: { phone: '', watch: '' }
+  }, '2026-09-06T20:00:00Z')
+  assert.equal(out.steps.value, 660)
+})
+
+test('the rolling 24h baseline input is de-duplicated the same way', () => {
+  // Without this the baseline would keep folding doubled days even once the
+  // displayed number was correct.
+  const seed = push(null, { steps: 500 }, '2026-09-05T20:00:00Z')
+  const out = push(seed, {
+    steps: 500,
+    stepsLast24hBySource: { phone: '5000;1000', watch: '5500;1500' }
+  }, '2026-09-06T20:00:00Z')
+  assert.equal(out._baseline.days, 1)
+  assert.equal(out._baseline.stepsAvg, 7000, 'the watch total, not 13,000')
+})
+
+test('heartRate is accepted under its truer name', () => {
+  const out = push(null, { heartRate: '71' }, '2026-09-06T20:00:00Z')
+  assert.equal(out.heart.value, 71)
 })
