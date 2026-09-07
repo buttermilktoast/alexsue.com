@@ -1,11 +1,11 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { site } from '../data/site.js'
-import { describeWeather, formatTemperature, useWeather } from '../composables/useWeather.js'
+import { describeWeather, formatTemperature, weatherKey } from '../composables/useWeather.js'
 import SectionBlock from './SectionBlock.vue'
 
 const config = site.weather
-const { current, sunEvent, loading, unit, setUnit } = useWeather(config)
+const { current, sunEvent, loading, unit, setUnit } = inject(weatherKey)
 const timeFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: config.timezone, hour: 'numeric', minute: '2-digit'
 })

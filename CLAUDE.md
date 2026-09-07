@@ -12,6 +12,7 @@ npm run preview    # serve the production build
 
 # Tests — plain node:test, no runner, no install
 node --test src/composables/useLiveStatus.test.mjs   # front-end pure logic
+node --test src/composables/useSky.test.mjs          # solar position and sky palette
 node --test infra/lambda/status.test.mjs             # Lambda status computation
 node --test --test-name-pattern='wall-clock slots' src/composables/useLiveStatus.test.mjs   # single test
 ```
@@ -44,14 +45,39 @@ small AWS pipeline that feeds it live health data pushed from a phone.
   Readings past `staleAfterMs` are withheld rather than shown stale, the opposite
   of the live-status rule above: a step count keeps its meaning as it ages, a
   temperature does not. °C/°F converts locally and persists per visitor.
-- **Theming** (`src/composables/useTheme.js`) is three-state: light, dark, or
-  system. Only an explicit choice is stamped as `data-theme` on `<html>`;
-  `system` stamps nothing and falls through to the `prefers-color-scheme` rules
-  in `src/style.css`, so the OS is tracked by CSS rather than by a listener.
-  Every component already draws from the tokens in `:root`, so a palette change
-  is a token change. A tiny inline script in `index.html` re-stamps the stored
-  choice before first paint; the `theme-color` meta is read back from whichever
-  palette won.
+- **Theming** (`src/composables/useTheme.js`) is four-state: sky (the default),
+  light, dark, or system. Light and dark are stamped as `data-theme` on
+  `<html>`; `system` stamps nothing and falls through to the
+  `prefers-color-scheme` rules in `src/style.css`, so the OS is tracked by CSS
+  rather than by a listener. Every component already draws from the tokens in
+  `:root`, so a palette change is a token change. A tiny inline script in
+  `index.html` re-stamps the stored choice before first paint; the `theme-color`
+  meta is read back from whichever palette won. Theme state lives at module
+  scope because the toggle and the backdrop both read it and must not drift.
+- **The sky** (`src/composables/useSky.js`) is what the default mode follows.
+  The sun's altitude over the fixed city in `site.weather` is computed locally
+  from the coordinates rather than fetched, so the page dresses itself before
+  the network answers and keeps doing so if it never does. Altitude becomes a
+  smoothstepped `daylight` value across the -12°..+6° twilight band, and three
+  things hang off it: the palette (`data-theme` flips about a degree above the
+  horizon, so dawn is dark and getting lighter until the sun is actually up),
+  a gradient backdrop interpolated between six anchor skies, and — from the
+  shared weather reading — a tint and optional precipitation layer.
+
+  Three rules shape it. **Weather tints, the sun decides**: a thunderstorm at
+  noon is a darker noon, never a night, so the palette never keys off a weather
+  code. **The sky gradates, the text does not**: interpolating text colours
+  through twilight lands on mid-grey on mid-grey, so the backdrop carries the
+  gradation and the palette flips once, masked to fade down the viewport so
+  nothing is asked to hold contrast against a horizon. **Legibility is solved,
+  not tuned**: `skyStrength` picks the largest opacity at which the palette's
+  own `--muted` still clears 4.5:1 against the composited sky, reading the
+  tokens back from the document so the stylesheet stays the only place the
+  colours are written. That is why a brightening pre-dawn sky needs no ceiling
+  — it is simply turned down until it fits.
+- `useWeather` is created **once** in `App.vue` and handed to both
+  `ConditionsSection` and the sky through `provide`/`inject` (`weatherKey`);
+  calling the composable twice would poll Open-Meteo twice for one number.
 - The **footer** shows the deployed commit from `VITE_GIT_COMMIT` /
   `VITE_GITHUB_REPOSITORY`, injected by the deploy workflow; locally it reads
   `version development`.

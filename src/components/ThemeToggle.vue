@@ -4,6 +4,7 @@ import { useTheme } from '../composables/useTheme.js'
 const { preference, setTheme } = useTheme()
 
 const options = [
+  { value: 'sky', glyph: '☁︎', label: 'Follow the sky in Honolulu' },
   { value: 'system', glyph: '◐', label: 'Match system theme' },
   { value: 'light', glyph: '☀', label: 'Light theme' },
   { value: 'dark', glyph: '☾', label: 'Dark theme' }
@@ -35,7 +36,7 @@ const options = [
 }
 
 .theme button {
-  min-width: 32px;
+  min-width: 30px;
   min-height: 28px;
   border: 0;
   border-radius: 3px;

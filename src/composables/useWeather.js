@@ -2,6 +2,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const UNIT_KEY = 'alexsue-weather-unit'
 
+// One reading serves both the conditions section and the sky backdrop, so the
+// composable is created once in App.vue and handed down rather than called
+// twice -- two calls would mean two polls of Open-Meteo for the same number.
+export const weatherKey = Symbol('weather')
+
 export function weatherUrl(config) {
   const params = new URLSearchParams({
     latitude: config.latitude,

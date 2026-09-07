@@ -14,15 +14,33 @@
     <meta name="theme-color" content="#f7f7f5" />
 
     <script>
-      // Stamp an explicit theme choice before first paint. A visitor who left
-      // the choice to their system stamps nothing and falls through to the
-      // prefers-color-scheme rules in the stylesheet.
+      // Stamp the theme before first paint. An explicit light or dark choice is
+      // stamped as-is; 'system' -- and any visitor who has never chosen --
+      // stamps nothing and falls through to the prefers-color-scheme rules in
+      // the stylesheet.
+      //
+      // The default, 'sky', needs to know where the sun is, and the module that
+      // works that out has not loaded yet. Rather than duplicate the solar maths
+      // here, the app leaves behind the palette it settled on and the time it
+      // next flips; past that time the palette is simply the other one, since
+      // the only thing a flip can do is swap them. Sunrise moves by about a
+      // minute a day, so a stale note is still right to within a minute or two,
+      // and being wrong costs one corrected repaint on the load that lands
+      // inside it.
       try {
-        var theme = localStorage.getItem('alexsue-theme')
+        var theme = localStorage.getItem('alexsue-theme') || 'sky'
         if (theme === 'light' || theme === 'dark') {
           document.documentElement.setAttribute('data-theme', theme)
+        } else if (theme === 'sky') {
+          var sky = JSON.parse(localStorage.getItem('alexsue-sky'))
+          if (sky && (sky.palette === 'light' || sky.palette === 'dark')) {
+            var flipped = sky.palette === 'dark' ? 'light' : 'dark'
+            document.documentElement.setAttribute(
+              'data-theme', Date.now() < sky.until ? sky.palette : flipped
+            )
+          }
         }
-      } catch (e) { /* Storage may be disabled. */ }
+      } catch (e) { /* Storage may be disabled, or hold nothing yet. */ }
     </script>
 
     <meta property="og:type" content="website" />
