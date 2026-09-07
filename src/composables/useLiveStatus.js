@@ -123,6 +123,16 @@ export function relativeTime(ms) {
   return `${Math.round(hours / 24)}d ago`
 }
 
+// Distance arrives in metres because that is what HealthKit stores. The site
+// shows US units by default -- site.weather.defaultUnit is 'F' -- so a run is
+// reported in miles rather than kilometres. One decimal under ten miles, none
+// above: the extra digit stops mattering once the number is that big.
+export function formatDistance(meters) {
+  if (typeof meters !== 'number' || !Number.isFinite(meters) || meters <= 0) return null
+  const miles = meters / 1609.344
+  return `${miles < 10 ? miles.toFixed(1) : Math.round(miles)} mi`
+}
+
 // Age is measured from the payload's own push timestamp, not from when it was
 // fetched: a successful request for a six-hour-old object is still stale data.
 export function buildRows(payload, nowMs, staleAfterMs) {
@@ -168,9 +178,18 @@ export function buildRows(payload, nowMs, staleAfterMs) {
   }
 
   if (workout?.type) {
+    // Every metric drops out when absent, the way minutes always has: a
+    // strength session has no distance, and the deployed shortcut sends
+    // neither distance nor energy at all.
+    const detail = [
+      workout.minutes ? `${workout.minutes}m` : null,
+      formatDistance(workout.distanceMeters),
+      workout.activeEnergyKcal ? `${Math.round(workout.activeEnergyKcal)} kcal` : null
+    ].filter(Boolean)
+
     out.push({
       label: 'Last workout',
-      value: `${workout.type}${workout.minutes ? ` · ${workout.minutes}m` : ''}`,
+      value: [workout.type, ...detail].join(' · '),
       state: dot('ok')
     })
   }

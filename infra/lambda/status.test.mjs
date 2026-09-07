@@ -421,3 +421,72 @@ test('heartRate is accepted under its truer name', () => {
   const out = push(null, { heartRate: '71' }, '2026-09-06T20:00:00Z')
   assert.equal(out.heart.value, 71)
 })
+
+test('a native client can send the full set of workout metrics', () => {
+  const out = push(null, {
+    workout: {
+      type: 'Outdoor Run',
+      minutes: 32,
+      endedAt: '2026-09-06T19:00:00Z',
+      distanceMeters: 5400,
+      activeEnergyKcal: 410,
+      avgHeartRate: 148,
+      maxHeartRate: 171
+    }
+  }, '2026-09-06T20:00:00Z')
+  assert.equal(out.workout.distanceMeters, 5400)
+  assert.equal(out.workout.activeEnergyKcal, 410)
+  assert.equal(out.workout.avgHeartRate, 148)
+  assert.equal(out.workout.maxHeartRate, 171)
+})
+
+test('the three original workout fields still work on their own', () => {
+  // The deployed shortcut sends exactly this and must keep working.
+  const out = push(null,
+    { workout: { type: 'Outdoor Run', minutes: 32, endedAt: '2026-09-06T19:00:00Z' } },
+    '2026-09-06T20:00:00Z')
+  assert.equal(out.workout.minutes, 32)
+  assert.equal(out.workout.distanceMeters, null, 'absent, not zero')
+  assert.equal(out.workout.activeEnergyKcal, null)
+  assert.equal(out.workout.avgHeartRate, null)
+})
+
+test('the flat lastWorkout fields still parse', () => {
+  const out = push(null, {
+    lastWorkoutName: 'Outdoor Run',
+    lastWorkoutDuration: '32:00',
+    lastWorkoutTimestamp: '2026-09-06T19:00:00Z'
+  }, '2026-09-06T20:00:00Z')
+  assert.equal(out.workout.type, 'Outdoor Run')
+  assert.equal(out.workout.minutes, 32)
+})
+
+test('implausible workout metrics are discarded rather than stored', () => {
+  const out = push(null, {
+    workout: {
+      type: 'Outdoor Run',
+      minutes: 32,
+      endedAt: '2026-09-06T19:00:00Z',
+      distanceMeters: 4000000,
+      activeEnergyKcal: 99000,
+      maxHeartRate: 400
+    }
+  }, '2026-09-06T20:00:00Z')
+  assert.equal(out.workout.minutes, 32, 'a bad metric does not void the workout')
+  assert.equal(out.workout.distanceMeters, null)
+  assert.equal(out.workout.activeEnergyKcal, null)
+  assert.equal(out.workout.maxHeartRate, null)
+})
+
+test('workout metrics carry forward with the workout', () => {
+  const fresh = push(null, {
+    workout: {
+      type: 'Outdoor Run', minutes: 32, endedAt: '2026-09-06T19:00:00Z',
+      distanceMeters: 5400, activeEnergyKcal: 410
+    }
+  }, '2026-09-06T20:00:00Z')
+  // A later steps-only push must not strip the metrics off the stored workout.
+  const later = push(fresh, { steps: 6000 }, '2026-09-07T02:00:00Z')
+  assert.equal(later.workout.distanceMeters, 5400)
+  assert.equal(later.workout.activeEnergyKcal, 410)
+})

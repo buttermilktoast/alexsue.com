@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildRows, msUntilNextSlot, relativeTime } from './useLiveStatus.js'
+import { buildRows, formatDistance, msUntilNextSlot, relativeTime } from './useLiveStatus.js'
 
 const STALE_AFTER = 3 * 60 * 60 * 1000
 const NOW = Date.parse('2026-09-03T12:00:00Z')
@@ -98,4 +98,39 @@ test('the heart row shows the bare number when no label is sent', () => {
   const rows = buildRows(noLabel, Date.parse('2026-09-03T12:00:00Z'), 3 * 60 * 60 * 1000)
   assert.equal(rows[0].label, 'Heart rate')
   assert.equal(rows[0].value, '66 bpm')
+})
+
+const workoutRow = (workout) =>
+  buildRows(payload('2026-09-03T11:48:00Z', { workout }), NOW, STALE_AFTER)
+    .find((row) => row.label === 'Last workout')
+
+test('a workout row appends distance and energy when they are present', () => {
+  const row = workoutRow({
+    type: 'Outdoor Run', minutes: 32, endedAt: '2026-09-03T09:00:00Z',
+    distanceMeters: 5400, activeEnergyKcal: 410
+  })
+  assert.equal(row.value, 'Outdoor Run · 32m · 3.4 mi · 410 kcal')
+})
+
+test('workout metrics the payload lacks simply drop out of the row', () => {
+  // A strength session has no distance, and the deployed shortcut sends
+  // neither metric at all -- both must read as the original single line.
+  const strength = workoutRow({
+    type: 'Traditional Strength Training', minutes: 45,
+    endedAt: '2026-09-03T09:00:00Z', distanceMeters: null, activeEnergyKcal: 260
+  })
+  assert.equal(strength.value, 'Traditional Strength Training · 45m · 260 kcal')
+
+  const legacy = workoutRow(
+    { type: 'Outdoor Run', minutes: 32, endedAt: '2026-09-03T09:00:00Z' })
+  assert.equal(legacy.value, 'Outdoor Run · 32m')
+})
+
+test('distance is reported in miles, losing the decimal once it stops mattering', () => {
+  assert.equal(formatDistance(5400), '3.4 mi')
+  assert.equal(formatDistance(1609.344), '1.0 mi')
+  assert.equal(formatDistance(42195), '26 mi', 'no decimal past ten miles')
+  assert.equal(formatDistance(0), null, 'a zero distance is not a distance')
+  assert.equal(formatDistance(null), null)
+  assert.equal(formatDistance('5400'), null, 'a string is not a reading')
 })

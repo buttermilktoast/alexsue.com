@@ -14,7 +14,11 @@ export const BOUNDS = {
   // Upper bound covers a live heart rate under exertion, not just a resting
   // one -- at 120 every reading taken while moving would be discarded.
   heartRate: [30, 220],
-  workoutMinutes: [0, 1440]
+  workoutMinutes: [0, 1440],
+  // Distance covers an ultramarathon or a long ride without admitting a
+  // decimal-point slip; energy covers the same span of effort.
+  workoutDistanceMeters: [0, 300000],
+  workoutEnergyKcal: [0, 10000]
 }
 
 const WORKOUT_TTL_MS = 72 * 60 * 60 * 1000
@@ -62,7 +66,28 @@ function normaliseWorkout(input, now, timeZone) {
 
   // ISO string, matching the shape a carried-forward workout already has, so
   // both paths can be handled identically downstream.
-  return { type, minutes: resolvedMinutes, endedAt: new Date(endedAt).toISOString() }
+  return {
+    type,
+    minutes: resolvedMinutes,
+    endedAt: new Date(endedAt).toISOString(),
+    // Metrics a native HealthKit client can read off an HKWorkout but the
+    // Shortcut never could. Each is optional: a strength session has no
+    // distance, and an older client sends none of them at all.
+    distanceMeters: toNumber(workout.distanceMeters ?? workout.distance),
+    activeEnergyKcal: toNumber(
+      workout.activeEnergyKcal ?? workout.activeEnergy ?? workout.calories
+    ),
+    avgHeartRate: toNumber(workout.avgHeartRate ?? workout.averageHeartRate),
+    maxHeartRate: toNumber(workout.maxHeartRate)
+  }
+}
+
+// Discard anything outside its bounds rather than storing it, the same rule
+// the top-level readings follow. Returns null so an absent and an implausible
+// value are indistinguishable downstream -- neither is something to render.
+function bounded(value, bounds) {
+  const number = toNumber(value)
+  return plausible(number, bounds) ? number : null
 }
 
 // Shortcuts formats a workout duration as a clock string ("10:03"), not a
@@ -359,10 +384,14 @@ export function computeStatus({ existing, input, now, config }) {
     if (!Number.isNaN(endedAt) && now.getTime() - endedAt < WORKOUT_TTL_MS) {
       output.workout = {
         type: String(workout.type).slice(0, 40),
-        minutes: plausible(toNumber(workout.minutes), BOUNDS.workoutMinutes)
-          ? toNumber(workout.minutes)
-          : null,
-        endedAt: new Date(endedAt).toISOString()
+        minutes: bounded(workout.minutes, BOUNDS.workoutMinutes),
+        endedAt: new Date(endedAt).toISOString(),
+        distanceMeters: bounded(workout.distanceMeters, BOUNDS.workoutDistanceMeters),
+        activeEnergyKcal: bounded(workout.activeEnergyKcal, BOUNDS.workoutEnergyKcal),
+        // A workout's own average and maximum are ordinary heart rates, so
+        // they answer to the same bounds as the top-level reading.
+        avgHeartRate: bounded(workout.avgHeartRate, BOUNDS.heartRate),
+        maxHeartRate: bounded(workout.maxHeartRate, BOUNDS.heartRate)
       }
     }
   }

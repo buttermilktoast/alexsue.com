@@ -74,7 +74,15 @@ optional; whatever is omitted carries forward from the previous object.
 {
   "stepsBySource": { "phone": "318;294", "watch": "401;259" },
   "heartRate": 62,
-  "workout": { "type": "Outdoor Run", "minutes": 32, "endedAt": "2026-09-02T17:00:00Z" }
+  "workout": {
+    "type": "Outdoor Run",
+    "minutes": 32,
+    "endedAt": "2026-09-02T17:00:00Z",
+    "distanceMeters": 5400,
+    "activeEnergyKcal": 410,
+    "avgHeartRate": 148,
+    "maxHeartRate": 171
+  }
 }
 ```
 
@@ -89,6 +97,13 @@ The flat `steps`, `stepsLast24h` and `stepsYesterday` fields still work and are
 read as a single source. `restingHeartRate` is accepted as an alias for
 `heartRate`.
 
+The last four `workout` fields are optional and come from a native HealthKit
+client reading an `HKWorkout`; the Shortcut cannot produce them and omits them.
+A workout missing one is not an error — a strength session has no distance.
+`distance`, `activeEnergy` / `calories` and `averageHeartRate` are accepted as
+aliases, and the flat `lastWorkoutName` / `lastWorkoutDuration` /
+`lastWorkoutTimestamp` trio the deployed Shortcut sends still parses.
+
 Values outside these bounds are discarded rather than stored:
 
 | Field | Accepted range |
@@ -96,6 +111,9 @@ Values outside these bounds are discarded rather than stored:
 | `steps` (each source) | 0 – 100,000 |
 | `heartRate` | 30 – 220 |
 | `workout.minutes` | 0 – 1,440 |
+| `workout.distanceMeters` | 0 – 300,000 |
+| `workout.activeEnergyKcal` | 0 – 10,000 |
+| `workout.avgHeartRate`, `workout.maxHeartRate` | 30 – 220 |
 
 ## How the baseline works
 
