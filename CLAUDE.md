@@ -44,6 +44,14 @@ small AWS pipeline that feeds it live health data pushed from a phone.
   Readings past `staleAfterMs` are withheld rather than shown stale, the opposite
   of the live-status rule above: a step count keeps its meaning as it ages, a
   temperature does not. °C/°F converts locally and persists per visitor.
+- **Theming** (`src/composables/useTheme.js`) is three-state: light, dark, or
+  system. Only an explicit choice is stamped as `data-theme` on `<html>`;
+  `system` stamps nothing and falls through to the `prefers-color-scheme` rules
+  in `src/style.css`, so the OS is tracked by CSS rather than by a listener.
+  Every component already draws from the tokens in `:root`, so a palette change
+  is a token change. A tiny inline script in `index.html` re-stamps the stored
+  choice before first paint; the `theme-color` meta is read back from whichever
+  palette won.
 - The **footer** shows the deployed commit from `VITE_GIT_COMMIT` /
   `VITE_GITHUB_REPOSITORY`, injected by the deploy workflow; locally it reads
   `version development`.

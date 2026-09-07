@@ -10,8 +10,20 @@
       content="Alex Sue's personal status dashboard, projects, and links."
     />
     <link rel="canonical" href="https://alexsue.com/" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#f7f7f5" />
+
+    <script>
+      // Stamp an explicit theme choice before first paint. A visitor who left
+      // the choice to their system stamps nothing and falls through to the
+      // prefers-color-scheme rules in the stylesheet.
+      try {
+        var theme = localStorage.getItem('alexsue-theme')
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', theme)
+        }
+      } catch (e) { /* Storage may be disabled. */ }
+    </script>
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://alexsue.com/" />

@@ -1,16 +1,20 @@
 <script setup>
 import { site } from '../data/site.js'
 import StatusDot from './StatusDot.vue'
+import ThemeToggle from './ThemeToggle.vue'
 </script>
 
 <template>
   <header class="header">
     <div class="bar">
       <span class="domain">{{ site.domain }}</span>
-      <span class="online">
-        <StatusDot state="ok" />
-        <span>online</span>
-      </span>
+      <div class="controls">
+        <span class="online">
+          <StatusDot state="ok" />
+          <span>online</span>
+        </span>
+        <ThemeToggle />
+      </div>
     </div>
 
     <h1 class="name">{{ site.name }}</h1>
@@ -33,6 +37,12 @@ import StatusDot from './StatusDot.vue'
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .online {

@@ -19,6 +19,39 @@
   color-scheme: light;
 }
 
+/* Dark palette. It is spelled out twice on purpose: once for visitors who left
+   the choice to their system, and once for an explicit choice stamped on
+   <html> — a media query and an attribute selector cannot share a rule. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --background: #131316;
+    --surface: #1c1c20;
+    --text: #ececee;
+    --muted: #a0a0a8;
+    --border: #2e2e34;
+    --accent: #7aa2ff;
+    --status-ok: #4ade80;
+    --status-warn: #fbbf24;
+    --status-idle: #71717a;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --background: #131316;
+  --surface: #1c1c20;
+  --text: #ececee;
+  --muted: #a0a0a8;
+  --border: #2e2e34;
+  --accent: #7aa2ff;
+  --status-ok: #4ade80;
+  --status-warn: #fbbf24;
+  --status-idle: #71717a;
+
+  color-scheme: dark;
+}
+
 *,
 *::before,
 *::after {
