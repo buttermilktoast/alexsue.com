@@ -2,13 +2,13 @@
 
 The phone pushes a health sample to a Lambda; the Lambda folds it into a
 running baseline and writes one JSON object to S3; the site polls that object
-hourly. There is no history and no database — the object carries its own
-accumulator forward under `_baseline`.
+every fifteen minutes. There is no history and no database — the object
+carries its own accumulator forward under `_baseline`.
 
 ```
 iOS Shortcut ──POST──> Lambda Function URL ──PutObject──> S3 status.json
                                                               │
-                                          alexsue.com ──GET───┘  (hourly)
+                                          alexsue.com ──GET───┘  (every 15 min)
 ```
 
 ## Deploy
@@ -224,7 +224,8 @@ aws logs tail /aws/lambda/alexsue-status-push --since 15m --format short
 - **No log entry at all** — the request never reached the function. See the
   function URL permissions section above.
 - **200 but the site is unchanged** — the object updated, but the page only
-  polls hourly and ignores anything older than three hours. Reload it.
+  polls every fifteen minutes and ignores anything older than three hours.
+  Reload it.
 
 ## Tests
 
