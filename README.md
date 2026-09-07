@@ -2,6 +2,10 @@
 
 A small static personal status dashboard. Vue 3 + Vite, deployed to GitHub Pages.
 
+See [Features and upcoming ideas](plans/features.md) for implemented features,
+dashboard candidates, and verified iOS Shortcuts capabilities. The
+[original website brief](plans/website.md) records the v1 design.
+
 ## Develop
 
 ```sh
@@ -21,6 +25,15 @@ npm run preview   # serve the production build locally
 All page content lives in [`src/data/site.js`](src/data/site.js) — the NOW
 section, projects, statuses, and links. Components read from it, so normal
 content updates never require touching markup.
+
+## Local conditions
+
+The conditions panel fetches Honolulu weather directly from [Open-Meteo](https://open-meteo.com/)
+every 15 minutes while the page is visible. It uses fixed city coordinates in
+`site.weather`, with no device location access or API key. Readings older than
+one hour show an unavailable message. Sunrise/sunset times use Honolulu time.
+The °C/°F buttons convert both temperature readings locally and remember each
+visitor's choice in their browser; Fahrenheit is the default.
 
 ## Deployment
 

@@ -6,6 +6,17 @@ export const site = {
   name: 'Alex Sue',
   tagline: 'personal status dashboard',
 
+  // A fixed city reference, never the owner's or visitor's device location.
+  weather: {
+    location: 'Honolulu',
+    latitude: 21.31,
+    longitude: -157.86,
+    timezone: 'Pacific/Honolulu',
+    defaultUnit: 'F',
+    intervalMs: 15 * 60 * 1000,
+    staleAfterMs: 60 * 60 * 1000
+  },
+
   now: {
     currentProject: {
       name: 'alexsue.com',

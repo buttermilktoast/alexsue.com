@@ -3,6 +3,7 @@ import DashboardHeader from './components/DashboardHeader.vue'
 import NowSection from './components/NowSection.vue'
 import ProjectsSection from './components/ProjectsSection.vue'
 import StatusSection from './components/StatusSection.vue'
+import ConditionsSection from './components/ConditionsSection.vue'
 import LinksSection from './components/LinksSection.vue'
 import SiteFooter from './components/SiteFooter.vue'
 </script>
@@ -15,6 +16,7 @@ import SiteFooter from './components/SiteFooter.vue'
       <NowSection />
       <ProjectsSection />
       <StatusSection />
+      <ConditionsSection />
       <LinksSection />
     </main>
 
