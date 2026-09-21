@@ -40,6 +40,7 @@ jobs:
           VITE_GIT_COMMIT: ${{ github.sha }}
           VITE_GITHUB_REPOSITORY: ${{ github.repository }}
           VITE_STATUS_URL: ${{ vars.VITE_STATUS_URL }}
+          VITE_GA_MEASUREMENT_ID: ${{ vars.VITE_GA_MEASUREMENT_ID }}
         run: npm run build
 
       - name: Upload Pages artifact

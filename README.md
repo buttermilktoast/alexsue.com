@@ -48,3 +48,23 @@ The footer shows the first 7 characters and links to the exact commit. Locally,
 where these are unset, it shows `version development`.
 
 `public/CNAME` keeps the `alexsue.com` custom domain attached to each deploy.
+
+## Analytics
+
+The site uses the Google tag directly for GA4; no Firebase project, SDK, or
+Tag Manager container is needed.
+
+1. In [Google Analytics](https://analytics.google.com/), create a property for
+   `alexsue.com` and a **Web** data stream for `https://alexsue.com`.
+2. Leave enhanced measurement enabled for automatic scroll and outbound-link
+   events. The tag already sends the initial page view; no custom events are set up.
+3. Copy the stream's **Measurement ID** (`G-…`) into the GitHub repository variable
+   `VITE_GA_MEASUREMENT_ID` under **Settings → Secrets and variables → Actions →
+   Variables**. This ID is public and does not need to be a secret.
+4. Deploy again (push to `main` or run the Pages workflow), visit the live site,
+   and check GA4's Realtime report to confirm the visit arrives.
+
+Tracking runs only in production builds on `alexsue.com` or `www.alexsue.com`.
+Development, local previews, and builds without a valid ID send nothing.
+Changing or removing the repository variable takes effect on the next deployment.
+Analytics starts collecting after activation; it cannot recover earlier visits.
