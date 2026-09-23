@@ -35,10 +35,16 @@ and unsigned exports were removed. Build and verification scripts remain.
 
 ## Confirmed source selection
 
-The working watch source is `alex’s Apple Watch` (curly apostrophe, U+2019).
-The earlier source was `alex's Apple Watch` (straight apostrophe, U+0027).
-The selected names look similar but are different strings. The iOS export
-stores Source under `Values.Enumeration`, not `Values.String`.
+The current filters use the device names supplied by the user on September
+23, 2026: `Alex iPhone 18 Pro` and `alex's Apple Watch S12` (straight
+apostrophe, U+0027). Both selections still need an on-device run to confirm
+step values. If a device is renamed again, update its Source filter in the
+shortcut too; these filters match the selected names.
+
+The previously verified watch source was `alex’s Apple Watch` (curly
+apostrophe, U+2019). At that time, `alex's Apple Watch` (straight apostrophe)
+returned no data. These are different strings; use the device's actual name.
+The iOS export stores Source under `Values.Enumeration`, not `Values.String`.
 
 The user observed Phone **1,730** and Watch **1,886** in the working preview.
 The server uses the larger of the two totals, so those inputs produce 1,886.

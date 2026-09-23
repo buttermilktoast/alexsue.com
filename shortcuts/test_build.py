@@ -129,8 +129,8 @@ class ShortcutTests(unittest.TestCase):
         self.assertEqual(text["WFSerializationType"], "WFTextTokenString")
         self.assertEqual(text["Value"]["string"].count(OBJ), 3)
         displayed = render(text, {"phoneToday": "1692;0", "watchToday": "1924;0", "heart": "67"})
-        self.assertIn("Phone (Alex iPhone 17): 1692;0", displayed)
-        self.assertIn("Watch (alex’s Apple Watch): 1924;0", displayed)
+        self.assertIn("Phone (Alex iPhone 18 Pro): 1692;0", displayed)
+        self.assertIn("Watch (alex's Apple Watch S12): 1924;0", displayed)
 
     def test_push_from_preview_preserves_tested_source_and_wiring(self):
         preview = build(None, preview=True)

@@ -162,9 +162,12 @@ python3 shortcuts/build.py \
   --from-preview '/path/to/Dashboard Preview v8.shortcut'
 ```
 
-The working watch name is `alex’s Apple Watch` with a curly apostrophe; the
-straight-apostrophe name previously returned no data. Source picker values
-must use `Values.Enumeration`. v6 used `Values.String`, which iOS ignored.
+The current source filters are `Alex iPhone 18 Pro` and `alex's Apple Watch S12`
+(straight apostrophe), matching the names supplied after the September 23,
+2026 device renames. These updated selections await on-device validation.
+The previously verified watch name used a curly apostrophe; names must match
+exactly. Source picker values must use `Values.Enumeration`. v6 used
+`Values.String`, which iOS ignored.
 Do not activate Push v6 or v8. Validate alexsue.com Dashboard on the phone, then retarget
 existing personal automations. Importing does not update automations.
 

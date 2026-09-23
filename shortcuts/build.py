@@ -23,8 +23,8 @@ from read_shortcut import read_shortcut
 # It is not a credential -- the bearer token gates the endpoint -- but this
 # repo is public, and there is no reason to hand out the address.
 ENDPOINT_PLACEHOLDER = "{ENDPOINT}"
-PHONE_SOURCE = "Alex iPhone 17"
-WATCH_SOURCE = "alex’s Apple Watch"
+PHONE_SOURCE = "Alex iPhone 18 Pro"
+WATCH_SOURCE = "alex's Apple Watch S12"
 OBJ = "\ufffc"
 ROOT = Path(__file__).resolve().parent
 

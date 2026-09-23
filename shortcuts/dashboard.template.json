@@ -46,7 +46,7 @@
                 "Removable": true,
                 "Values": {
                   "Enumeration": {
-                    "Value": "Alex iPhone 17",
+                    "Value": "Alex iPhone 18 Pro",
                     "WFSerializationType": "WFStringSubstitutableState"
                   },
                   "Unit": 4
@@ -148,7 +148,7 @@
                 "Removable": true,
                 "Values": {
                   "Enumeration": {
-                    "Value": "alex’s Apple Watch",
+                    "Value": "alex's Apple Watch S12",
                     "WFSerializationType": "WFStringSubstitutableState"
                   },
                   "Unit": 4
