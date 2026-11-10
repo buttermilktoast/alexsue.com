@@ -11,7 +11,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
-        // alexsue.com/xmas26/: the family card. Its own entry, so it never loads the dashboard's analytics.
+        // alexsue.com/xmas26/: the family card, with its own entry and shared GA4 setup.
         xmas26: resolve(import.meta.dirname, 'xmas26/index.html')
       }
     }

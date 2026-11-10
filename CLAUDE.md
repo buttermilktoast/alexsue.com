@@ -89,8 +89,8 @@ small AWS pipeline that feeds it live health data pushed from a phone.
 
 `alexsue.com/xmas26/` is the Sue family's 2026 Christmas card, reached from the
 QR code on the printed card. It is a second Vite entry (`xmas26/index.html`,
-registered in `vite.config.js`), plain JS rather than Vue, and shares nothing
-with the dashboard. The design and the API live in the **merryroll** repo
+registered in `vite.config.js`), plain JS rather than Vue, and shares the GA4
+initializer with the dashboard. The design and the API live in the **merryroll** repo
 (`plans/xmas26-design.html`, `api/`); this is the port.
 
 - `src/xmas26/main.js` is the three.js scene: the printed card under a tree of
@@ -103,10 +103,11 @@ with the dashboard. The design and the API live in the **merryroll** repo
   the samples, and the masthead's "Preview" label says which parts.
   `VITE_MERRYROLL_API` overrides the API base; the default is committed
   because the page has to call it anyway (the admin routes need the family key).
-- **Privacy (merryroll `plans/PRIVACY.md` P7):** the card page never imports
-  `src/analytics.js`, fonts are self-hosted in `src/xmas26/fonts/` (SIL OFL),
-  three.js is bundled from npm rather than a CDN, and it's `noindex`. The only
-  host it talks to is the MerryRoll API and its photo CDN. Keep it that way.
+- **Privacy:** fonts are self-hosted in `src/xmas26/fonts/` (SIL OFL), three.js
+  is bundled from npm rather than a CDN, and the page is `noindex`. In addition
+  to the MerryRoll API and its photo CDN, the card uses the shared
+  `src/analytics.js` GA4 initializer, enabled at the owner's request. Analytics
+  runs only in production on the site's domains with a valid measurement ID.
 - "Get the app" posts to the API's `POST /waitlist`. The API's CORS list allows
   `https://alexsue.com` and `http://localhost:5173` only, so test locally on
   5173 (`npm run dev`, or `npx vite preview --port 5173`).
