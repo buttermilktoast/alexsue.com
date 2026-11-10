@@ -49,6 +49,14 @@ where these are unset, it shows `version development`.
 
 `public/CNAME` keeps the `alexsue.com` custom domain attached to each deploy.
 
+## The family card
+
+`alexsue.com/xmas26/` is the family Christmas card: a 3D tree of the year's
+photos with the printed card underneath. Its photos and card images come from
+the MerryRoll API, so it updates without a deploy; until they exist it shows
+painted samples marked "Preview". It has no analytics and no third-party
+requests. See CLAUDE.md for details.
+
 ## Analytics
 
 The site uses the Google tag directly for GA4; no Firebase project, SDK, or
@@ -64,7 +72,8 @@ Tag Manager container is needed.
 4. Deploy again (push to `main` or run the Pages workflow), visit the live site,
    and check GA4's Realtime report to confirm the visit arrives.
 
-Tracking runs only in production builds on `alexsue.com` or `www.alexsue.com`.
+Tracking runs only in production builds on `alexsue.com` or `www.alexsue.com`,
+and only on the dashboard: the `/xmas26/` card never loads it.
 Development, local previews, and builds without a valid ID send nothing.
 Changing or removing the repository variable takes effect on the next deployment.
 Analytics starts collecting after activation; it cannot recover earlier visits.

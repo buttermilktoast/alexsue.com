@@ -14,6 +14,7 @@ npm run preview    # serve the production build
 node --test src/composables/useLiveStatus.test.mjs   # front-end pure logic
 node --test src/composables/useSky.test.mjs          # solar position and sky palette
 node --test infra/lambda/status.test.mjs             # Lambda status computation
+node --test src/xmas26/data.test.mjs                 # the family card's data loading
 node --test --test-name-pattern='wall-clock slots' src/composables/useLiveStatus.test.mjs   # single test
 ```
 
@@ -83,6 +84,32 @@ small AWS pipeline that feeds it live health data pushed from a phone.
   `version development`.
 - Pure, exported functions in the composables/lambda carry the logic and the
   tests; the Vue wrapper and the Lambda handler are thin shells around them.
+
+### The family card (`xmas26/`)
+
+`alexsue.com/xmas26/` is the Sue family's 2026 Christmas card, reached from the
+QR code on the printed card. It is a second Vite entry (`xmas26/index.html`,
+registered in `vite.config.js`), plain JS rather than Vue, and shares nothing
+with the dashboard. The design and the API live in the **merryroll** repo
+(`plans/xmas26-design.html`, `api/`); this is the port.
+
+- `src/xmas26/main.js` is the three.js scene: the printed card under a tree of
+  the year's photos, ported from the draft unchanged. `samples.js` paints the
+  sample year and card it shows until real ones exist.
+- `src/xmas26/data.js` (pure, tested) reads public `GET /card` from the
+  MerryRoll API: `photos` is the family collection (being in it is being on
+  the page; there is no publish step), and `card.cardFront`/`cardBack` are the
+  printed card's images, set from the app. Whatever is missing falls back to
+  the samples, and the masthead's "Preview" label says which parts.
+  `VITE_MERRYROLL_API` overrides the API base; the default is committed
+  because the page has to call it anyway (the admin routes need the family key).
+- **Privacy (merryroll `plans/PRIVACY.md` P7):** the card page never imports
+  `src/analytics.js`, fonts are self-hosted in `src/xmas26/fonts/` (SIL OFL),
+  three.js is bundled from npm rather than a CDN, and it's `noindex`. The only
+  host it talks to is the MerryRoll API and its photo CDN. Keep it that way.
+- "Get the app" posts to the API's `POST /waitlist`. The API's CORS list allows
+  `https://alexsue.com` and `http://localhost:5173` only, so test locally on
+  5173 (`npm run dev`, or `npx vite preview --port 5173`).
 
 ### Deployment
 

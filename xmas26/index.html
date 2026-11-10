@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>The Sue Family 2026</title>
+    <meta name="description" content="Mele Kalikimaka from the Sue family: our year in photos, hung on the tree." />
+    <!-- A family card, reached from the QR code on the printed card: keep it out of search (PRIVACY P7). -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#08130f" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://alexsue.com/xmas26/" />
+    <meta property="og:title" content="The Sue Family 2026" />
+    <meta property="og:description" content="Mele Kalikimaka! Our year in photos, hung on the tree." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- No analytics on this page (PRIVACY P7): this entry never imports src/analytics.js. -->
+  </head>
+  <body>
+<div id="app">
+  <canvas id="scene" aria-label="A Christmas tree made of polaroid photos from 2026, with the family card under it. Drag to turn it."></canvas>
+  <canvas id="snow" aria-hidden="true"></canvas>
+
+  <header class="mast">
+    <p class="eyebrow">Mele Kalikimaka</p>
+    <h1>The Sue Family <span class="year">2026</span></h1>
+    <p class="lede" id="lede">Our year, hung on the tree.</p>
+    <p class="hint">Drag to turn it. Tap a photo, or the card.</p>
+    <p class="draft" id="draft" hidden></p>
+  </header>
+
+  <div class="dock" id="dock">
+    <nav class="months" id="months" aria-label="Jump to a month"></nav>
+    <div class="tools">
+      <button class="pill primary" id="btn-all" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1.5" y="1.5" width="5.5" height="5.5"/><rect x="9" y="1.5" width="5.5" height="5.5"/><rect x="1.5" y="9" width="5.5" height="5.5"/><rect x="9" y="9" width="5.5" height="5.5"/></svg>
+        All photos
+      </button>
+      <button class="pill" id="btn-flip" type="button">Flip the card</button>
+      <button class="pill" id="btn-replay" type="button">Replay</button>
+      <button class="pill" id="btn-snow" type="button" aria-pressed="true">Snow</button>
+      <button class="pill" id="btn-own" type="button">Try your own</button>
+      <button class="pill" id="btn-app" type="button">Get the app</button>
+    </div>
+  </div>
+
+  <div id="loading"><p>Hanging the photos…</p></div>
+</div>
+
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-labelledby="lb-place">
+  <button class="round lb-close" id="lb-close" type="button" aria-label="Close photo">✕</button>
+  <figure class="lb-polaroid" id="lb-figure">
+    <img id="lb-img" alt="">
+    <figcaption><span id="lb-place"></span><span class="date" id="lb-date"></span></figcaption>
+  </figure>
+  <div class="lb-meta">
+    <p id="lb-caption"></p>
+    <p id="lb-by"></p>
+    <div class="lb-row">
+      <button class="round" id="lb-prev" type="button" aria-label="Previous photo">‹</button>
+      <output id="lb-count"></output>
+      <button class="round" id="lb-next" type="button" aria-label="Next photo">›</button>
+    </div>
+  </div>
+</div>
+
+<section class="collage" id="collage" hidden aria-labelledby="collage-title">
+  <div class="collage-head">
+    <h2 id="collage-title">The whole year</h2>
+    <button class="round" id="collage-close" type="button" aria-label="Back to the tree">✕</button>
+  </div>
+  <div class="collage-body" id="collage-body"></div>
+</section>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-labelledby="sheet-title">
+  <button class="round close" id="sheet-close" type="button" aria-label="Close">✕</button>
+  <h2 id="sheet-title">Try your own</h2>
+  <p>Preview the tree with your own card and photos. Nothing leaves this browser.</p>
+  <label class="file"><span>Card front<small>The printed card's front image</small></span><em id="own-front-state">Choose</em><input type="file" id="own-front" accept="image/*"></label>
+  <label class="file"><span>Card back<small>The printed card's back image</small></span><em id="own-back-state">Choose</em><input type="file" id="own-back" accept="image/*"></label>
+  <label class="file"><span>Photos<small>Name each file after the place (Lanikai.jpg) and that becomes its label</small></span><em id="own-photos-state">Choose</em><input type="file" id="own-photos" accept="image/*" multiple></label>
+  <div class="row"><button class="pill" id="own-reset" type="button">Back to our year</button></div>
+</div>
+
+<div class="sheet" id="waitlist" hidden role="dialog" aria-labelledby="wl-title">
+  <button class="round close" id="wl-close" type="button" aria-label="Close">✕</button>
+  <p class="wl-eyebrow">Coming soon</p>
+  <h2 id="wl-title">Make one for your family</h2>
+  <p>MerryRoll finds the year's best photos on your phone and turns them into a page like this one, for Christmas, a birthday or any big event. Leave your email and we'll tell you when it's out.</p>
+  <p class="wl-gift">🎁 The first 50 people on the list get a free license.</p>
+  <form class="wl-form" id="wl-form" novalidate>
+    <label for="wl-email">Your email</label>
+    <input type="email" id="wl-email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" maxlength="254" required>
+    <button class="pill primary" id="wl-submit" type="submit">Notify me</button>
+    <div class="wl-trap" aria-hidden="true"><label for="wl-website">Leave this empty</label><input type="text" id="wl-website" name="website" tabindex="-1" autocomplete="off"></div>
+  </form>
+  <p class="wl-msg" id="wl-msg" role="status" aria-live="polite"></p>
+  <p class="wl-fine">We'll only email you about the launch, and we won't share your address. To be removed, email <a class="wl-contact" href="mailto:info@gopherapps.com">info@gopherapps.com</a>.</p>
+</div>
+
+    <script type="module" src="/src/xmas26/main.js"></script>
+  </body>
+</html>
