@@ -330,7 +330,7 @@ canvas.addEventListener("pointerleave", () => { hover = -1; canvas.classList.rem
 let flipping = false;
 async function flipCard() {
   if (flipping || !card) return;
-  flipping = true; holdRotation();
+  flipping = true; holdRotation(cardMode ? 0 : 7000);
   const from = card.rotation.y;
   await tween(1.0, (k) => { card.rotation.y = from + Math.PI * k; card.position.y = card.userData.baseY + Math.sin(k * Math.PI) * 0.18; });
   flipping = false;
@@ -353,6 +353,7 @@ function buildMonths() {
 }
 function selectMonth(i) {
   if (!introDone) finishIntro();
+  setCardMode(false);
   const buttons = [...$("months").children];
   if (activeMonth === i) { activeMonth = -1; monthLit.clear(); buttons.forEach((b) => b.setAttribute("aria-pressed", "false")); flyHome(); holdRotation(); return; }
   activeMonth = i; buttons.forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
@@ -365,6 +366,7 @@ function selectMonth(i) {
 let lbIndex = -1, lastFocus = null;
 function openLightbox(i) {
   if (!introDone) finishIntro();
+  setCardMode(false);
   lbIndex = (i + photos.length) % photos.length;
   const p = photos[lbIndex];
   const img = $("lb-img"); img.src = fullSrc(p); img.alt = p.caption || p.place || "Photo";
@@ -426,7 +428,7 @@ $("btn-all").addEventListener("click", () => { $("collage").hidden = false; hold
 $("collage-close").addEventListener("click", () => { $("collage").hidden = true; holdRotation(3000); $("btn-all").focus(); });
 
 // Fly in until the card fills the screen: 92% of the width on a phone, 74% of the height on a wide
-// screen. Face whichever side is nearer the current view, then flip to show the other side.
+// screen, facing whichever side is nearer the current view (showCard overrides that with the front).
 function cardView() {
   const { w, h } = cardMesh.userData, aspect = innerWidth / innerHeight, c = current();
   const radius = Math.max((w / 2) / (tanHalf() * aspect * 0.92), (h / 2) / (tanHalf() * 0.74), controls.minDistance);
@@ -434,15 +436,37 @@ function cardView() {
   const front = card.rotation.y, azim = off(front) <= off(front + Math.PI) ? front : front + Math.PI;
   return { targetY: card.userData.baseY, radius, polar: 1.53, azim };
 }
+// Card view: the dock's card button reads "Flip it" and "Back to the tree" appears, and the camera
+// holds still on the card instead of drifting back into the slow turn.
+let cardMode = false;
+function setCardMode(on) {
+  if (cardMode === on) return;
+  cardMode = on;
+  $("btn-flip-label").textContent = on ? "Flip it" : "See our card";
+  $("btn-tree").hidden = !on;
+  stripFade($("tools"));
+}
+// The first tap flies in to the card's front; once there, each tap flips it.
 async function showCard() {
   if (!introDone) finishIntro();
-  holdRotation(12000);
-  const c = current(), v = cardView();
-  if (Math.abs(c.radius - v.radius) > 0.3 || Math.abs(c.targetY - v.targetY) > 0.15) await flyTo(v, 0.9);
-  flipCard();
+  holdRotation(0);
+  if (cardMode) { flipCard(); return; }
+  setCardMode(true);
+  await flyTo({ ...cardView(), azim: card.rotation.y }, 0.9);
 }
+function leaveCard() { setCardMode(false); flyHome(); holdRotation(3000); }
 $("btn-flip").addEventListener("click", showCard);
-$("btn-replay").addEventListener("click", () => { activeMonth = -1; monthLit.clear(); buildMonths(); startIntro(); });
+$("btn-tree").addEventListener("click", leaveCard);
+// Pinching or dragging well away from the card counts as leaving it.
+controls.addEventListener("end", () => { if (cardMode && Math.abs(current().radius - cardView().radius) > 1) { setCardMode(false); holdRotation(); } });
+$("btn-replay").addEventListener("click", () => { setCardMode(false); activeMonth = -1; monthLit.clear(); buildMonths(); startIntro(); });
+
+// The months and (on a phone) the tools scroll sideways; fade the edge that has more to show.
+function stripFade(el) {
+  const l = el.scrollLeft > 2, r = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+  el.classList.toggle("more-l", l); el.classList.toggle("more-r", r);
+}
+for (const id of ["months", "tools"]) $(id).addEventListener("scroll", (e) => stripFade(e.currentTarget), { passive: true });
 let snowOn = true;
 $("btn-snow").addEventListener("click", (e) => { snowOn = !snowOn; e.currentTarget.setAttribute("aria-pressed", String(snowOn)); if (!snowOn) snowCtx.clearRect(0, 0, snowCv.width, snowCv.height); });
 
@@ -540,7 +564,8 @@ $("wl-form").addEventListener("submit", async (e) => {
 
 function setPhotos(list) {
   photos = list; activeMonth = -1; monthLit.clear();
-  buildTree(photos); buildMonths(); buildCollage();
+  setCardMode(false);
+  buildTree(photos); buildMonths(); buildCollage(); stripFade($("months"));
   $("lede").textContent = `${photos.length} moments from our year, hung on the tree.`;
   startIntro();
 }
@@ -597,7 +622,11 @@ function animatePolaroids(t) {
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); initSnow();
-  if (introDone && !flying && !overlayOpen()) { const f = framing(), c = current(); place(f.targetY, f.dist, f.polar, c.azim); }
+  if (introDone && !flying && !overlayOpen()) {
+    const v = cardMode ? cardView() : { ...framing(), radius: framing().dist, azim: current().azim };
+    place(v.targetY, v.radius, v.polar, v.azim);
+  }
+  stripFade($("months")); stripFade($("tools"));
 }
 addEventListener("resize", resize);
 

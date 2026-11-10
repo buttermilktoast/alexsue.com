@@ -30,16 +30,20 @@
 
   <div class="dock" id="dock">
     <nav class="months" id="months" aria-label="Jump to a month"></nav>
-    <div class="tools">
-      <button class="pill primary" id="btn-all" type="button">
+    <div class="tools" id="tools">
+      <button class="pill primary" id="btn-flip" type="button">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="1"/><path d="M8 3v10"/></svg>
+        <span id="btn-flip-label">See our card</span>
+      </button>
+      <button class="pill" id="btn-tree" type="button" hidden>Back to the tree</button>
+      <button class="pill" id="btn-all" type="button">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1.5" y="1.5" width="5.5" height="5.5"/><rect x="9" y="1.5" width="5.5" height="5.5"/><rect x="1.5" y="9" width="5.5" height="5.5"/><rect x="9" y="9" width="5.5" height="5.5"/></svg>
         All photos
       </button>
-      <button class="pill" id="btn-flip" type="button">Flip the card</button>
-      <button class="pill" id="btn-replay" type="button">Replay</button>
-      <button class="pill" id="btn-snow" type="button" aria-pressed="true">Snow</button>
-      <button class="pill" id="btn-own" type="button">Try your own</button>
       <button class="pill" id="btn-app" type="button">Get the app</button>
+      <button class="pill" id="btn-own" type="button">Try your own</button>
+      <button class="pill" id="btn-snow" type="button" aria-pressed="true">Snow</button>
+      <button class="pill" id="btn-replay" type="button">Replay</button>
     </div>
   </div>
 

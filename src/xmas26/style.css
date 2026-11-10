@@ -210,10 +210,28 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 .cta p { margin: 0; font-family: var(--display); font-size: clamp(1.3rem, 3.4vw, 1.8rem); text-wrap: balance; }
 .cta span { display: block; font-family: var(--hand); font-size: 1.4rem; color: var(--ember); }
 
+/* Scrolling strips (months; the tools on a phone) fade at whichever edge has more to show. */
+.months.more-r, .tools.more-r { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+.months.more-l, .tools.more-l { mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
+.months.more-l.more-r, .tools.more-l.more-r { mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
+
+/* Phone: the tree is the page. A one-line masthead and a one-row dock give it the screen. */
 @media (max-width: 640px) {
-  .mast h1 .year { font-size: 1.9em; }
-  .lede { font-size: 0.88rem; }
-  .pill { min-height: 38px; padding: 0 0.8rem; font-size: 0.8rem; }
+  .mast { top: calc(env(safe-area-inset-top, 0px) + 12px); left: max(16px, env(safe-area-inset-left, 0px)); max-width: calc(100% - 32px); }
+  .eyebrow { font-size: 1.45rem; }
+  .mast h1 { font-size: 1.6rem; text-wrap: nowrap; }
+  .mast h1 .year { display: inline; font-size: 1em; line-height: 1; letter-spacing: 0; color: var(--ember); }
+  .lede { display: none; }
+  .hint { margin-top: 0.35rem; font-size: 0.76rem; }
+  .draft { margin-top: 0.45rem; padding: 0.22rem 0.55rem; font-size: 0.62rem; }
+  .dock { gap: 8px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+  .months button { padding: 0.55rem 0.5rem; }
+  .tools {
+    flex-wrap: nowrap; justify-content: safe center; overflow-x: auto; scrollbar-width: none;
+    align-self: stretch; margin-inline: -16px; padding-inline: 16px; /* scroll edge to edge, start at the gutter */
+  }
+  .tools::-webkit-scrollbar { display: none; }
+  .pill { flex: none; min-height: 40px; padding: 0 0.85rem; font-size: 0.82rem; white-space: nowrap; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
