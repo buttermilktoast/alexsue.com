@@ -31,6 +31,30 @@ export const site = {
 
   projects: [
     {
+      emoji: '✨',
+      title: 'Unique Daily Affirmations',
+      description: 'A fresh affirmation every day, on iOS and Android',
+      url: 'https://uniquedailyaffirmations.com',
+      status: 'Android now available — also on the App Store',
+      tag: 'ios / android'
+    },
+    {
+      emoji: '🏀',
+      title: 'Hoops',
+      description: 'Basketball game for iPhone and iPad',
+      url: 'https://hoops.gopherapps.com',
+      status: 'on the App Store',
+      tag: 'ios'
+    },
+    {
+      emoji: '🎄',
+      title: 'MerryRoll',
+      description: "Find your family's best photos of the year and share them in an interactive Christmas card",
+      url: '/xmas26/',
+      status: 'piloting at /xmas26 — iOS and Android coming soon',
+      tag: 'ios / android'
+    },
+    {
       emoji: '💬',
       title: 'Between Us',
       description: 'Conversation cards to bring couples closer',
@@ -53,22 +77,6 @@ export const site = {
       url: 'https://hawaii-permit-prep.buttermilktoast.chatgpt.site/',
       status: 'live',
       tag: 'web'
-    },
-    {
-      emoji: '🏀',
-      title: 'Hoops',
-      description: 'Basketball game for iPhone and iPad',
-      url: 'https://hoops.gopherapps.com',
-      status: 'on the App Store',
-      tag: 'ios'
-    },
-    {
-      emoji: '✨',
-      title: 'Unique Daily Affirmations',
-      description: 'A fresh affirmation every day, on iOS',
-      url: 'https://uniquedailyaffirmations.com',
-      status: 'on the App Store',
-      tag: 'ios'
     },
     {
       emoji: '🔧',
@@ -97,8 +105,8 @@ export const site = {
   statuses: [
     { label: 'Site', value: 'operational', state: 'ok' },
     { label: 'Side projects', value: 'too many', state: 'warn' },
-    { label: 'Current device', value: 'MacBook Pro', state: 'idle' },
-    { label: 'Playing', value: 'Pragmata', state: 'idle' }
+    { label: 'Current device', value: 'MacBook Pro Proled XDR 😁', state: 'idle' },
+    { label: 'Playing', value: 'Legend of Zelda: Ocarina of Time', state: 'idle' }
   ],
 
   links: [
