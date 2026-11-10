@@ -364,12 +364,23 @@ function selectMonth(i) {
 }
 
 let lbIndex = -1, lastFocus = null;
+const fullLoads = new Map();
+function preloadFull(p) {
+  const u = fullSrc(p);
+  if (!fullLoads.has(u)) { const i = new Image(); i.src = u; fullLoads.set(u, i.decode().then(() => u, () => null)); }
+  return fullLoads.get(u);
+}
 function openLightbox(i) {
   if (!introDone) finishIntro();
   setCardMode(false);
   lbIndex = (i + photos.length) % photos.length;
   const p = photos[lbIndex];
-  const img = $("lb-img"); img.src = fullSrc(p); img.alt = p.caption || p.place || "Photo";
+  // Show the thumbnail the tree already loaded so the photo changes with its caption, then swap in the
+  // full copy once it's decoded. Warm the neighbours' full copies so prev/next is instant.
+  const img = $("lb-img"), at = lbIndex, quick = p.thumb || fullSrc(p);
+  img.src = quick; img.alt = p.caption || p.place || "Photo";
+  if (quick !== fullSrc(p)) preloadFull(p).then((u) => { if (u && lbIndex === at) img.src = u; }); // a failed load keeps the thumbnail
+  [1, -1].forEach((d) => preloadFull(photos[(lbIndex + d + photos.length) % photos.length]));
   $("lb-place").textContent = p.place || ""; $("lb-date").textContent = fmtDate(p);
   $("lb-caption").textContent = p.caption || ""; $("lb-by").textContent = p.addedBy ? `Added by ${p.addedBy}` : "";
   $("lb-count").textContent = `${lbIndex + 1} of ${photos.length}`;
