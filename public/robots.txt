@@ -1,0 +1,14 @@
+# The family card at /xmas26 holds family photos. AI crawlers: please don't collect them
+# (MerryRoll PRIVACY.md P10). The page is also noindex, so search engines leave it out.
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: CCBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: PerplexityBot
+User-agent: Bytespider
+Disallow: /xmas26
+
+# Everything else on the site is open.
+User-agent: *
+Allow: /

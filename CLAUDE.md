@@ -104,7 +104,9 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   `VITE_MERRYROLL_API` overrides the API base; the default is committed
   because the page has to call it anyway (the admin routes need the family key).
 - **Privacy:** fonts are self-hosted in `src/xmas26/fonts/` (SIL OFL), three.js
-  is bundled from npm rather than a CDN, and the page is `noindex`. In addition
+  is bundled from npm rather than a CDN, and the page is `noindex`.
+  `public/robots.txt` asks AI crawlers to stay out of `/xmas26` (MerryRoll
+  PRIVACY.md P10); keep its list in step with that rule. In addition
   to the MerryRoll API and its photo CDN, the card uses the shared
   `src/analytics.js` GA4 initializer, enabled at the owner's request. Analytics
   runs only in production on the site's domains with a valid measurement ID.
