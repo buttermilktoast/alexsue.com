@@ -1,5 +1,6 @@
 // The measurement ID is public; only the deployed site should send visits.
-export function initAnalytics() {
+// `pageLocation` replaces the address reported with the page view, for pages whose URL carries a personal code.
+export function initAnalytics({ pageLocation } = {}) {
   const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim()
   if (
     !import.meta.env.PROD ||
@@ -13,7 +14,8 @@ export function initAnalytics() {
   }
   window.gtag('js', new Date())
   // config sends the initial page_view. No separate page-view event is needed.
-  window.gtag('config', measurementId)
+  if (pageLocation) window.gtag('config', measurementId, { page_location: pageLocation })
+  else window.gtag('config', measurementId)
 
   const script = document.createElement('script')
   script.async = true

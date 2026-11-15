@@ -6,10 +6,12 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel, cleanName } from "./data.js";
+import { API_BASE, YEAR, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
-initAnalytics();
+// A personal link (?to=auntiesu) greets that person and shows the family's note to them.
+const TO = codeFromSearch(location.search);
+initAnalytics(TO ? { pageLocation: withoutCode(location.href) } : {});
 
 const REDUCE = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -488,46 +490,13 @@ document.addEventListener("keydown", (e) => {
     else if (e.key === "Escape") closeLightbox();
   } else if (e.key === "Escape") {
     if (!$("hello").hidden) $("hello-skip").click();
+    else if (!$("note").hidden) closeNote();
     else if (!$("waitlist").hidden) $("wl-close").click();
     else if (!$("collage").hidden) $("collage-close").click();
-    else if (!$("sheet").hidden) $("sheet-close").click();
   }
 });
 
-// ---------------------------------------------------------------------------------------------
-// Try your own card and photos (nothing leaves the browser)
-// ---------------------------------------------------------------------------------------------
-const own = { front: null, back: null };
-let samples = [], sampleCardImgs = null;
 const loadImg = (url) => new Promise((res, rej) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = rej; i.src = url; });
-$("btn-own").addEventListener("click", () => { $("waitlist").hidden = true; $("sheet").hidden = false; $("sheet-close").focus(); });
-$("sheet-close").addEventListener("click", () => { $("sheet").hidden = true; $("btn-own").focus(); });
-async function setCardFace(side, file) {
-  if (!file) return;
-  own[side] = await loadImg(URL.createObjectURL(file));
-  $(`own-${side}-state`).textContent = "✓ Added";
-  buildCard(own.front || sampleCardImgs.front, own.back || sampleCardImgs.back);
-}
-$("own-front").addEventListener("change", (e) => setCardFace("front", e.target.files[0]));
-$("own-back").addEventListener("change", (e) => setCardFace("back", e.target.files[0]));
-$("own-photos").addEventListener("change", async (e) => {
-  const files = [...e.target.files].filter((f) => f.type.startsWith("image/"));
-  if (!files.length) return;
-  $("own-photos-state").textContent = "Loading…";
-  const list = await Promise.all(files.map(async (f, i) => {
-    const url = URL.createObjectURL(f), img = await loadImg(url);
-    const place = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/\s+\d+$/, "").trim();
-    return { id: `own${i}-${f.name}`, source: img, full: url, place, caption: "", date: new Date(f.lastModified), addedBy: "" };
-  }));
-  list.sort((a, b) => a.date - b.date);
-  $("own-photos-state").textContent = `✓ ${list.length} added`;
-  setPhotos(list); $("sheet").hidden = true;
-});
-$("own-reset").addEventListener("click", () => {
-  own.front = own.back = null;
-  ["front", "back", "photos"].forEach((s) => { $(`own-${s}-state`).textContent = "Choose"; $(`own-${s}`).value = ""; });
-  buildCard(sampleCardImgs.front, sampleCardImgs.back); setPhotos(samples); $("sheet").hidden = true;
-});
 
 // ---------------------------------------------------------------------------------------------
 // Get the app: the launch waitlist (merryroll SPEC §5.6). The API stores the email, where it came
@@ -537,7 +506,6 @@ const WAITLIST_URL = `${API_BASE}/waitlist`;
 const EMAIL_OK = /^[^\s@]+@[^\s@.][^\s@]*\.[^\s@]{2,}$/;
 let wlReturn = null;
 function openWaitlist(from) {
-  $("sheet").hidden = true;
   wlReturn = from; $("waitlist").hidden = false; holdRotation(0);
   ($("wl-form").hidden ? $("wl-close") : $("wl-email")).focus();
 }
@@ -611,7 +579,29 @@ $("hello-form").addEventListener("submit", (e) => {
   closeHello();
 });
 $("hello-skip").addEventListener("click", () => { if (storedName() === null) storeName(""); closeHello(); });
-$("who").addEventListener("click", () => openHello(true));
+$("who").addEventListener("click", () => (recipient ? recipient.message && openNote(true) : openHello(true)));
+
+// A personal link: no question to ask. The name comes from the family, and their note opens first.
+let recipient = null, noteDone = null, noteReopened = false;
+function openNote(again = false) {
+  noteReopened = again;
+  $("note-title").textContent = `Mele Kalikimaka, ${recipient.name}`;
+  $("note-msg").textContent = recipient.message;
+  $("note-open").textContent = again ? "Close" : "Open the card";
+  $("note").hidden = false; holdRotation(0); $("note-open").focus();
+  return new Promise((res) => (noteDone = res));
+}
+function closeNote() {
+  $("note").hidden = true; holdRotation(3000); noteDone?.(); noteDone = null;
+  if (noteReopened) $("who").focus();
+}
+$("note-open").addEventListener("click", closeNote);
+function greetRecipient(r) {
+  recipient = r; greet(r.name);
+  $("who").title = r.message ? "Read your note" : "";
+  $("who").disabled = !r.message;
+  return r.message ? openNote() : null;
+}
 
 function setPhotos(list) {
   photos = list; activeMonth = -1; monthLit.clear();
@@ -700,7 +690,7 @@ function frame(now) {
 // ---------------------------------------------------------------------------------------------
 async function loadYear(paintedPhotos, paintedCard) {
   let data = null;
-  try { data = await fetchCard(); } catch (e) { console.warn("Showing the sample year:", e.message); }
+  try { data = await fetchCard({ to: TO }); } catch (e) { console.warn("Showing the sample year:", e.message); }
 
   let list = [];
   const picks = photosFromApi(data?.photos);
@@ -711,6 +701,7 @@ async function loadYear(paintedPhotos, paintedCard) {
   const urls = cardFaces(data?.card);
   const [front, back] = await Promise.all([urls.front, urls.back].map((u) => (u ? loadImg(u).catch(() => null) : null)));
   return {
+    recipient: recipientFromApi(data?.recipient),
     photos: list.length ? list : paintedPhotos,
     card: { front: front || paintedCard.front, back: back || paintedCard.back },
     label: previewLabel({ realPhotos: list.length > 0, realFront: !!front, realBack: !!back }),
@@ -718,22 +709,21 @@ async function loadYear(paintedPhotos, paintedCard) {
 }
 
 (async () => {
-  // Ask while the year loads, so the question costs no extra wait.
+  // Ask while the year loads, so the question costs no extra wait. A personal link waits to see who it's for.
   greet(storedName());
-  const hello = storedName() === null ? openHello() : null;
+  let hello = !TO && storedName() === null ? openHello() : null;
   const fonts = Promise.all([`36px ${HAND}`, `100px ${DISPLAY}`, `600 34px ${BODY}`].map((f) => document.fonts.load(f)));
   await Promise.race([fonts, new Promise((r) => setTimeout(r, 2000))]);
   const painted = SAMPLE_PHOTOS.map((p) => ({ ...p, source: paintSample(p) }));
   const year = await loadYear(painted, sampleCard(painted));
-  // "Back to our year" in Try your own returns here.
-  samples = year.photos;
-  sampleCardImgs = year.card;
   $("draft").hidden = !year.label;
   $("draft").textContent = year.label ?? "";
-  buildCard(sampleCardImgs.front, sampleCardImgs.back);
+  buildCard(year.card.front, year.card.back);
   resize();
+  if (year.recipient) hello = greetRecipient(year.recipient);
+  else if (TO && storedName() === null) hello = openHello();   // a code we don't know: ask, like everyone else
   await hello;
-  setPhotos(samples);
+  setPhotos(year.photos);
   requestAnimationFrame(frame);
   $("loading").classList.add("gone");
   setTimeout(() => ($("loading").hidden = true), 700);

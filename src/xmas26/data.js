@@ -2,6 +2,8 @@
 // Pure functions, no DOM, so `node --test` covers them.
 //
 // GET /card is public and returns { recipient, card, photos }:
+// - recipient: { name, message } when the link carries a known personal code (?to=auntiesu), else
+//   null. The family adds people in the app; the code only personalises the page, which is public.
 // - photos: every pick in the family collection, public fields only. Being in the collection is
 //   being on this page; there's no publish step.
 // - card.cardFront / card.cardBack: the printed card's images, { url, w, h } or null. The family
@@ -15,11 +17,11 @@ export const API_BASE =
 export const YEAR = 2026
 
 /** Fetches the card, giving up after `timeoutMs` so a slow API never strands the page on its loader. */
-export async function fetchCard({ base = API_BASE, fetchImpl = fetch, timeoutMs = 8000 } = {}) {
+export async function fetchCard({ base = API_BASE, fetchImpl = fetch, timeoutMs = 8000, to = null } = {}) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
-    const res = await fetchImpl(`${base}/card`, { signal: ctrl.signal })
+    const res = await fetchImpl(`${base}/card${to ? `?to=${encodeURIComponent(to)}` : ''}`, { signal: ctrl.signal })
     if (!res.ok) throw new Error(`GET /card ${res.status}`)
     return await res.json()
   } finally {
@@ -66,6 +68,26 @@ export function photosFromApi(list) {
 /** A typed name, tidied the way the API stores it: one line, single spaces, 40 characters at most. */
 export function cleanName(s) {
   return (typeof s === 'string' ? s : '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40).trim()
+}
+
+/** The personal code in a link's query string (?to=auntiesu), or null if there isn't a usable one. */
+export function codeFromSearch(search) {
+  const code = (new URLSearchParams(search ?? '').get('to') ?? '').trim().toLowerCase()
+  return /^[a-z0-9-]{2,24}$/.test(code) ? code : null
+}
+
+/** Who the link is for: { name, message }, or null when the code isn't known. The note keeps its line breaks. */
+export function recipientFromApi(r) {
+  const name = cleanName(r?.name)
+  if (!name) return null
+  return { name, message: text(r.message).slice(0, 500) }
+}
+
+/** The address to report to analytics: the same page with the personal code taken out (MerryRoll PRIVACY P7). */
+export function withoutCode(href) {
+  const url = new URL(href)
+  url.searchParams.delete('to')
+  return url.toString()
 }
 
 /** The card image URLs, or null for a side that isn't set. */

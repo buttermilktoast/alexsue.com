@@ -1,7 +1,7 @@
 // node --test src/xmas26/data.test.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayOf, photosFromApi, cardFaces, previewLabel, fetchCard, cleanName } from './data.js'
+import { dayOf, photosFromApi, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode } from './data.js'
 
 test('dayOf keeps the calendar day the photo was taken, in its own time zone', () => {
   const d = dayOf('2026-07-12T23:30:00-10:00')
@@ -54,4 +54,29 @@ test('cleanName tidies a typed name and caps it at 40 characters', () => {
   assert.equal(cleanName('x'.repeat(200)).length, 40)
   assert.equal(cleanName('   '), '')
   assert.equal(cleanName(null), '')
+})
+
+test('codeFromSearch: a usable personal code, or null', () => {
+  assert.equal(codeFromSearch('?to=auntiesu'), 'auntiesu')
+  assert.equal(codeFromSearch('?src=qr&to=%20Sues%20'), 'sues')
+  for (const none of ['', '?to=', '?to=a', '?src=qr', '?to=fam%23alexsue', '?to=../x', undefined]) assert.equal(codeFromSearch(none), null, String(none))
+})
+
+test('recipientFromApi: a name is needed, the note keeps its line breaks', () => {
+  assert.deepEqual(recipientFromApi({ code: 'auntiesu', name: ' Auntie Sue ', message: ' See you\nat New Year! ' }), { name: 'Auntie Sue', message: 'See you\nat New Year!' })
+  assert.deepEqual(recipientFromApi({ name: 'Tutu' }), { name: 'Tutu', message: '' })
+  for (const none of [null, undefined, {}, { name: '  ', message: 'hi' }]) assert.equal(recipientFromApi(none), null)
+})
+
+test('fetchCard sends the personal code when there is one', async () => {
+  const seen = []
+  const fetchImpl = async (url) => { seen.push(url); return { ok: true, json: async () => ({}) } }
+  await fetchCard({ base: 'https://api', fetchImpl })
+  await fetchCard({ base: 'https://api', fetchImpl, to: 'auntiesu' })
+  assert.deepEqual(seen, ['https://api/card', 'https://api/card?to=auntiesu'])
+})
+
+test('withoutCode drops only the personal code', () => {
+  assert.equal(withoutCode('https://alexsue.com/xmas26/?to=auntiesu'), 'https://alexsue.com/xmas26/')
+  assert.equal(withoutCode('https://alexsue.com/xmas26/?src=qr&to=sues'), 'https://alexsue.com/xmas26/?src=qr')
 })

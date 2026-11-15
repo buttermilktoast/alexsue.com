@@ -48,7 +48,6 @@
         All photos
       </button>
       <button class="pill" id="btn-app" type="button">Get the app</button>
-      <button class="pill" id="btn-own" type="button">Try your own</button>
       <button class="pill" id="btn-snow" type="button" aria-pressed="true">Snow</button>
       <button class="pill" id="btn-replay" type="button">Replay</button>
     </div>
@@ -82,16 +81,6 @@
   <div class="collage-body" id="collage-body"></div>
 </section>
 
-<div class="sheet" id="sheet" hidden role="dialog" aria-labelledby="sheet-title">
-  <button class="round close" id="sheet-close" type="button" aria-label="Close">✕</button>
-  <h2 id="sheet-title">Try your own</h2>
-  <p>Preview the tree with your own card and photos. Nothing leaves this browser.</p>
-  <label class="file"><span>Card front<small>The printed card's front image</small></span><em id="own-front-state">Choose</em><input type="file" id="own-front" accept="image/*"></label>
-  <label class="file"><span>Card back<small>The printed card's back image</small></span><em id="own-back-state">Choose</em><input type="file" id="own-back" accept="image/*"></label>
-  <label class="file"><span>Photos<small>Name each file after the place (Lanikai.jpg) and that becomes its label</small></span><em id="own-photos-state">Choose</em><input type="file" id="own-photos" accept="image/*" multiple></label>
-  <div class="row"><button class="pill" id="own-reset" type="button">Back to our year</button></div>
-</div>
-
 <div class="sheet" id="waitlist" hidden role="dialog" aria-labelledby="wl-title">
   <button class="round close" id="wl-close" type="button" aria-label="Close">✕</button>
   <p class="wl-eyebrow">Coming soon</p>
@@ -118,6 +107,12 @@
     <div class="wl-trap" aria-hidden="true"><label for="hello-website">Leave this empty</label><input type="text" id="hello-website" name="website" tabindex="-1" autocomplete="off"></div>
   </form>
   <div class="row"><button class="pill" id="hello-skip" type="button">Skip</button></div>
+</div>
+
+<div class="sheet hello note" id="note" hidden role="dialog" aria-modal="true" aria-labelledby="note-title">
+  <h2 class="wl-eyebrow" id="note-title"></h2>
+  <p class="note-msg" id="note-msg"></p>
+  <div class="row"><button class="pill primary" id="note-open" type="button">Open the card</button></div>
 </div>
 
     <script type="module" src="/src/xmas26/main.js"></script>

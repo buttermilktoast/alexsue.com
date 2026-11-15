@@ -99,7 +99,11 @@ initializer with the dashboard. The design and the API live in the **merryroll**
 - `src/xmas26/data.js` (pure, tested) reads public `GET /card` from the
   MerryRoll API: `photos` is the family collection (being in it is being on
   the page; there is no publish step), and `card.cardFront`/`cardBack` are the
-  printed card's images, set from the app. Whatever is missing falls back to
+  printed card's images, set from the app. A personal link (`?to=<code>`,
+  made in the app's "Share the card" screen) also returns `recipient`: the
+  page greets that person by name and opens with the family's note instead of
+  asking who they are. The code is taken out of the address sent to GA4.
+  Whatever is missing falls back to
   the samples, and the masthead's "Preview" label says which parts.
   `VITE_MERRYROLL_API` overrides the API base; the default is committed
   because the page has to call it anyway (the admin routes need the family key).

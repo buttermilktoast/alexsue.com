@@ -170,7 +170,7 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 .pol .cap .place { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pol .cap .date { color: #8a5a2b; font-size: 1.15rem; white-space: nowrap; }
 
-/* ---- Try your own ---- */
+/* ---- Sheets (waitlist, name) ---- */
 .sheet {
   position: fixed; z-index: 16; left: 50%; transform: translateX(-50%);
   bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(440px, calc(100% - 32px));
@@ -180,11 +180,6 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 .sheet h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.45rem; }
 .sheet p { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
 .sheet .close { position: absolute; top: 10px; right: 10px; }
-.file { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
-.file span { font-size: 0.92rem; }
-.file small { display: block; color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
-.file em { font-style: normal; font-size: 0.8rem; color: var(--ember); white-space: nowrap; }
-.file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .sheet .row { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---- Get the app (launch waitlist) ---- */
@@ -216,6 +211,11 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   pointer-events: auto; padding: 0; border: 0; background: none; cursor: pointer;
   font: inherit; color: inherit; overflow-wrap: anywhere; text-align: left;
 }
+.who:disabled { cursor: default; }
+.who:disabled:hover { text-decoration: none; }
+/* The family's note to the person a personal link is for. */
+.sheet .note-msg { color: var(--ink); font-size: 1.02rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; max-height: 46vh; overflow-y: auto; }
+.sheet.note h2.wl-eyebrow { font-weight: 400; margin-bottom: 0; overflow-wrap: anywhere; }
 .who:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 
 /* Scrolling strips (months; the tools on a phone) fade at whichever edge has more to show. */
