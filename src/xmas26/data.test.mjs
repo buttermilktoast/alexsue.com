@@ -1,7 +1,7 @@
 // node --test src/xmas26/data.test.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayOf, photosFromApi, cardFaces, previewLabel, fetchCard } from './data.js'
+import { dayOf, photosFromApi, cardFaces, previewLabel, fetchCard, cleanName } from './data.js'
 
 test('dayOf keeps the calendar day the photo was taken, in its own time zone', () => {
   const d = dayOf('2026-07-12T23:30:00-10:00')
@@ -47,4 +47,11 @@ test('fetchCard returns the JSON, and throws on an error status or a hang', asyn
   await assert.rejects(fetchCard({ base: 'https://api', fetchImpl: async () => ({ ok: false, status: 500 }) }), /500/)
   const hang = (_, { signal }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('aborted'))))
   await assert.rejects(fetchCard({ base: 'https://api', fetchImpl: hang, timeoutMs: 20 }), /aborted/)
+})
+
+test('cleanName tidies a typed name and caps it at 40 characters', () => {
+  assert.equal(cleanName('  Auntie\n  Mei '), 'Auntie Mei')
+  assert.equal(cleanName('x'.repeat(200)).length, 40)
+  assert.equal(cleanName('   '), '')
+  assert.equal(cleanName(null), '')
 })

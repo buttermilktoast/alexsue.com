@@ -28,7 +28,7 @@
   <canvas id="snow" aria-hidden="true"></canvas>
 
   <header class="mast">
-    <p class="eyebrow">Mele Kalikimaka</p>
+    <p class="eyebrow">Mele Kalikimaka<span id="who-wrap" hidden>, <button class="who" id="who" type="button" title="Change your name"></button></span></p>
     <h1>The Sue Family <span class="year">2026</span></h1>
     <p class="lede" id="lede">Our year, hung on the tree.</p>
     <p class="hint">Drag to turn it. Tap a photo, or the card.</p>
@@ -106,6 +106,18 @@
   </form>
   <p class="wl-msg" id="wl-msg" role="status" aria-live="polite"></p>
   <p class="wl-fine">We'll only email you about the launch, and we won't share your address. To be removed, email <a class="wl-contact" href="mailto:info@gopherapps.com">info@gopherapps.com</a>.</p>
+</div>
+
+<div class="sheet hello" id="hello" hidden role="dialog" aria-modal="true" aria-labelledby="hello-title">
+  <p class="wl-eyebrow">Mele Kalikimaka</p>
+  <h2 id="hello-title">What's your name?</h2>
+  <form class="wl-form" id="hello-form" novalidate>
+    <label for="hello-name">First name is fine</label>
+    <input type="text" id="hello-name" name="name" autocomplete="given-name" autocapitalize="words" enterkeyhint="go" maxlength="40">
+    <button class="pill primary" type="submit">Open the card</button>
+    <div class="wl-trap" aria-hidden="true"><label for="hello-website">Leave this empty</label><input type="text" id="hello-website" name="website" tabindex="-1" autocomplete="off"></div>
+  </form>
+  <div class="row"><button class="pill" id="hello-skip" type="button">Skip</button></div>
 </div>
 
     <script type="module" src="/src/xmas26/main.js"></script>

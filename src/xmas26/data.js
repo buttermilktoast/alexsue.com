@@ -63,6 +63,11 @@ export function photosFromApi(list) {
     .map(({ p }) => p)
 }
 
+/** A typed name, tidied the way the API stores it: one line, single spaces, 40 characters at most. */
+export function cleanName(s) {
+  return (typeof s === 'string' ? s : '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40).trim()
+}
+
 /** The card image URLs, or null for a side that isn't set. */
 export function cardFaces(card) {
   const face = (f) => (f && httpsUrl(f.url) ? f.url : null)

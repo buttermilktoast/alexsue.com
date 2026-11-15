@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel } from "./data.js";
+import { API_BASE, YEAR, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel, cleanName } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
 initAnalytics();
@@ -487,7 +487,8 @@ document.addEventListener("keydown", (e) => {
     else if (e.key === "ArrowLeft") openLightbox(lbIndex - 1);
     else if (e.key === "Escape") closeLightbox();
   } else if (e.key === "Escape") {
-    if (!$("waitlist").hidden) $("wl-close").click();
+    if (!$("hello").hidden) $("hello-skip").click();
+    else if (!$("waitlist").hidden) $("wl-close").click();
     else if (!$("collage").hidden) $("collage-close").click();
     else if (!$("sheet").hidden) $("sheet-close").click();
   }
@@ -572,6 +573,45 @@ $("wl-form").addEventListener("submit", async (e) => {
     btn.disabled = false; btn.textContent = "Notify me";
   }
 });
+
+// ---------------------------------------------------------------------------------------------
+// Who's opening the card: asked once, before the tree appears. The name stays in this browser to
+// greet them, and each new name is posted to the API. Skipping is remembered too ("" in storage).
+// ---------------------------------------------------------------------------------------------
+const NAME_KEY = "xmas26-name";
+const storedName = () => { try { return localStorage.getItem(NAME_KEY); } catch { return null; } };
+const storeName = (name) => { try { localStorage.setItem(NAME_KEY, name); } catch { /* private window: ask again next time */ } };
+function greet(name) {
+  $("who").textContent = name || "";
+  $("who-wrap").hidden = !name;
+}
+let helloDone = null;
+function openHello(change = false) {
+  $("hello-name").value = storedName() || "";
+  $("hello-skip").textContent = change ? "Cancel" : "Skip";
+  $("hello").hidden = false; $("hello-name").focus();
+  return new Promise((res) => (helloDone = res));
+}
+function closeHello() {
+  const wasChange = $("hello-skip").textContent === "Cancel";
+  $("hello").hidden = true; helloDone?.(); helloDone = null;
+  if (wasChange) $("who").focus();
+}
+$("hello-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = cleanName($("hello-name").value), before = storedName();
+  if (!name) return $("hello-skip").click();
+  storeName(name); greet(name);
+  if (name !== before) {
+    fetch(`${API_BASE}/visitors`, {
+      method: "POST", headers: { "content-type": "application/json" }, keepalive: true,
+      body: JSON.stringify({ name, source: "xmas26", website: $("hello-website").value }),
+    }).catch(() => {});
+  }
+  closeHello();
+});
+$("hello-skip").addEventListener("click", () => { if (storedName() === null) storeName(""); closeHello(); });
+$("who").addEventListener("click", () => openHello(true));
 
 function setPhotos(list) {
   photos = list; activeMonth = -1; monthLit.clear();
@@ -678,6 +718,9 @@ async function loadYear(paintedPhotos, paintedCard) {
 }
 
 (async () => {
+  // Ask while the year loads, so the question costs no extra wait.
+  greet(storedName());
+  const hello = storedName() === null ? openHello() : null;
   const fonts = Promise.all([`36px ${HAND}`, `100px ${DISPLAY}`, `600 34px ${BODY}`].map((f) => document.fonts.load(f)));
   await Promise.race([fonts, new Promise((r) => setTimeout(r, 2000))]);
   const painted = SAMPLE_PHOTOS.map((p) => ({ ...p, source: paintSample(p) }));
@@ -689,6 +732,7 @@ async function loadYear(paintedPhotos, paintedCard) {
   $("draft").textContent = year.label ?? "";
   buildCard(sampleCardImgs.front, sampleCardImgs.back);
   resize();
+  await hello;
   setPhotos(samples);
   requestAnimationFrame(frame);
   $("loading").classList.add("gone");
