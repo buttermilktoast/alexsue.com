@@ -96,6 +96,10 @@ initializer with the dashboard. The design and the API live in the **merryroll**
 - `src/xmas26/main.js` is the three.js scene: the printed card under a tree of
   the year's photos, ported from the draft unchanged. `samples.js` paints the
   sample year and card it shows until real ones exist.
+- **Photo count:** the tree looks best at up to 60 photos and gets crowded past 80
+  (`TREE_PHOTOS` in `data.js`; polaroids stop shrinking at `max`). It's a soft limit:
+  the page shows every pick, and the MerryRoll app warns past these numbers. Change
+  both together.
 - `src/xmas26/data.js` (pure, tested) reads public `GET /card` from the
   MerryRoll API: `photos` is the family collection (being in it is being on
   the page; there is no publish step), and `card.cardFront`/`cardBack` are the

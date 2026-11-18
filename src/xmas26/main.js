@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode } from "./data.js";
+import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
 // A personal link (?to=auntiesu) greets that person and shows the family's note to them.
@@ -102,7 +102,8 @@ function buildTree(list) {
   tree = new THREE.Group(); scene.add(tree);
   pols = [];
   const N = list.length;
-  const size = THREE.MathUtils.clamp(1 - (N - 30) / 110, 0.55, 1);
+  // Polaroids shrink from 30 photos and bottom out at TREE_PHOTOS.max; past that the tree only gets denser.
+  const size = THREE.MathUtils.clamp(1 - (0.45 * (N - 30)) / (TREE_PHOTOS.max - 30), 0.55, 1);
   const spacing = 0.66 * size;
   let turns = 1.6;
   while (turns < 7.5 && helixLength(turns) < N * spacing) turns += 0.1;

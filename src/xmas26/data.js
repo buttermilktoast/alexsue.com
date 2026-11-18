@@ -16,6 +16,15 @@ export const API_BASE =
 
 export const YEAR = 2026
 
+/**
+ * How many photos the tree holds well (merryroll SPEC §3.6). A soft limit: the page shows every pick.
+ * - best: up to here each polaroid is big enough to recognise on a phone.
+ * - max: here the polaroids reach their smallest size; past it the tree turns into a wall of tiles
+ *   (checked by rendering 31, 50, 75, 100 and 150 photos, Nov 2026).
+ * The MerryRoll app uses the same numbers to warn before the family shares more than this.
+ */
+export const TREE_PHOTOS = Object.freeze({ best: 60, max: 80 })
+
 /** Fetches the card, giving up after `timeoutMs` so a slow API never strands the page on its loader. */
 export async function fetchCard({ base = API_BASE, fetchImpl = fetch, timeoutMs = 8000, to = null } = {}) {
   const ctrl = new AbortController()
