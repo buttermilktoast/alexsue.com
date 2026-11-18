@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Display Colour Test</title>
+    <style>
+      html {
+        color-scheme: only light;
+        background-color: #d8b4fe;
+      }
+
+      body {
+        box-sizing: border-box;
+        min-height: 2000px;
+        min-height: max(2000px, calc(100vh + 160px));
+        margin: 0;
+        padding: 16px;
+        font: 16px/1.4 system-ui, sans-serif;
+      }
+
+      .controls {
+        box-sizing: border-box;
+        max-width: 360px;
+        margin: 0 auto;
+        padding: 12px 14px;
+        border-radius: 14px;
+        color-scheme: dark;
+        color: #f5f5f5;
+        background: #1a1a1a;
+      }
+
+      .pickers {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 4px;
+        font-size: 14px;
+      }
+
+      select,
+      input {
+        box-sizing: border-box;
+        min-height: 48px;
+        border: 1px solid #797979;
+        border-radius: 8px;
+        color: inherit;
+        background: #292929;
+        font: 16px system-ui, sans-serif;
+      }
+
+      select {
+        width: 100%;
+        padding: 0 10px;
+      }
+
+      input {
+        width: 72px;
+        padding: 4px;
+      }
+
+      p {
+        margin: 8px 0 0;
+        color: #d0d0d0;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="controls" aria-label="Display colour test">
+      <div class="pickers">
+        <label>
+          Preset
+          <select id="preset" autocomplete="off">
+            <option value="#000000">Black</option>
+            <option value="#101010">Near black</option>
+            <option value="#808080">Mid grey</option>
+            <option value="#ffffff">White</option>
+            <option value="#ff0000">Red</option>
+            <option value="#00ff00">Green</option>
+            <option value="#0000ff">Blue</option>
+            <option value="#d8b4fe" selected>Light purple</option>
+            <option value="#ff1493">Bright pink</option>
+            <option value="" disabled>Custom colour</option>
+          </select>
+        </label>
+        <label>
+          Custom
+          <input id="custom-colour" type="color" value="#d8b4fe" />
+        </label>
+      </div>
+      <p>Scroll for a clear view of the colour.</p>
+    </main>
+
+    <script type="module">
+      const preset = document.querySelector('#preset')
+      const custom = document.querySelector('#custom-colour')
+
+      function paint() {
+        document.documentElement.style.backgroundColor = custom.value
+      }
+
+      function applyPreset() {
+        custom.value = preset.value
+        paint()
+      }
+
+      preset.addEventListener('change', applyPreset)
+
+      custom.addEventListener('input', () => {
+        preset.value = custom.value
+        if (preset.selectedIndex === -1) preset.value = ''
+        paint()
+      })
+
+      applyPreset()
+    </script>
+  </body>
+</html>
