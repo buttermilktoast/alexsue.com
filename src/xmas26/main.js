@@ -383,8 +383,9 @@ function openLightbox(i) {
   img.src = quick; img.alt = p.caption || p.place || "Photo";
   if (quick !== fullSrc(p)) preloadFull(p).then((u) => { if (u && lbIndex === at) img.src = u; }); // a failed load keeps the thumbnail
   [1, -1].forEach((d) => preloadFull(photos[(lbIndex + d + photos.length) % photos.length]));
-  $("lb-place").textContent = p.place || ""; $("lb-date").textContent = fmtDate(p);
-  $("lb-caption").textContent = p.caption || ""; $("lb-by").textContent = p.addedBy ? `Added by ${p.addedBy}` : "";
+  // The caption is hand-written on the polaroid and the place goes underneath; with no caption, the place takes its spot.
+  $("lb-caption").textContent = p.caption || p.place || ""; $("lb-date").textContent = fmtDate(p);
+  $("lb-place").textContent = p.caption ? p.place || "" : ""; $("lb-by").textContent = p.addedBy ? `Added by ${p.addedBy}` : "";
   $("lb-count").textContent = `${lbIndex + 1} of ${photos.length}`;
   const fig = $("lb-figure"); fig.style.animation = "none"; void fig.offsetWidth; fig.style.animation = "";
   const lb = $("lightbox");
