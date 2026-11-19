@@ -1,7 +1,7 @@
 // node --test src/xmas26/data.test.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayOf, photosFromApi, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode } from './data.js'
+import { dayOf, photosFromApi, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText } from './data.js'
 
 test('dayOf keeps the calendar day the photo was taken, in its own time zone', () => {
   const d = dayOf('2026-07-12T23:30:00-10:00')
@@ -79,4 +79,25 @@ test('fetchCard sends the personal code when there is one', async () => {
 test('withoutCode drops only the personal code', () => {
   assert.equal(withoutCode('https://alexsue.com/xmas26/?to=auntiesu'), 'https://alexsue.com/xmas26/')
   assert.equal(withoutCode('https://alexsue.com/xmas26/?src=qr&to=sues'), 'https://alexsue.com/xmas26/?src=qr')
+})
+
+test('photosFromApi: a video pick keeps its clip and length; photos and bad clips get none', () => {
+  const [v, p, bad] = photosFromApi([
+    { id: 'v', type: 'video', url: 'https://cdn/full/v.jpg', thumb: 'https://cdn/thumb/v.jpg', video: 'https://cdn/video/v.mp4', duration: 29.97, takenAt: '2026-01-01T00:00:00Z' },
+    { id: 'p', url: 'https://cdn/full/p.jpg', video: 'https://cdn/video/p.mp4', duration: 4, takenAt: '2026-02-01T00:00:00Z' },
+    { id: 'b', type: 'video', url: 'https://cdn/full/b.jpg', video: 'http://cdn/video/b.mp4', duration: -1, takenAt: '2026-03-01T00:00:00Z' },
+  ])
+  assert.equal(v.video, 'https://cdn/video/v.mp4')
+  assert.equal(v.duration, 29.97)
+  assert.equal(v.url, 'https://cdn/full/v.jpg')      // the still frame, for the tree
+  assert.equal(p.video, null)
+  assert.equal(p.duration, null)
+  assert.equal(bad.video, null)                       // only https clips
+  assert.equal(bad.duration, null)
+})
+
+test('durationText', () => {
+  assert.equal(durationText(7.4), '0:07')
+  assert.equal(durationText(29.97), '0:30')
+  assert.equal(durationText(undefined), '0:00')
 })

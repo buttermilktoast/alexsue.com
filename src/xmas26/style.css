@@ -120,7 +120,8 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   animation: lb-in 0.45s cubic-bezier(.2, .8, .2, 1);
 }
 @keyframes lb-in { from { opacity: 0; transform: translateY(18px) rotate(-3deg) scale(.96); } }
-.lb-polaroid img { display: block; width: 100%; max-height: min(63vh, 620px); object-fit: contain; background: #1b1814; }
+.lb-polaroid img, .lb-polaroid video { display: block; width: 100%; max-height: min(63vh, 620px); object-fit: contain; background: #1b1814; }
+.lb-polaroid video[hidden], .lb-polaroid img[hidden] { display: none; }
 .lb-polaroid figcaption {
   display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
   padding: 0.35rem 0.2rem 0.6rem; font-family: var(--hand); color: var(--pen); font-size: 2.1rem; line-height: 1.1;
@@ -167,6 +168,11 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 }
 .pol:hover, .pol:focus-visible { transform: rotate(0deg) translateY(-4px) scale(1.03); box-shadow: 0 20px 36px rgba(0, 0, 0, 0.5); }
 .pol img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; max-width: 100%; }
+.pol { position: relative; }
+.pol .play {
+  position: absolute; top: 14px; right: 14px; padding: 2px 8px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 0.8rem; font-variant-numeric: tabular-nums; pointer-events: none;
+}
 .pol .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem; padding: 0.25rem 0.1rem 0.45rem; font-family: var(--hand); color: var(--pen); font-size: 1.4rem; line-height: 1.1; }
 .pol .cap .place { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pol .cap .date { color: #8a5a2b; font-size: 1.15rem; white-space: nowrap; }

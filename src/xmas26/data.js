@@ -6,6 +6,8 @@
 //   null. The family adds people in the app; the code only personalises the page, which is public.
 // - photos: every pick in the family collection, public fields only. Being in the collection is
 //   being on this page; there's no publish step.
+// - A video pick (type "video", MerryRoll SPEC §3.6) also has `video`, a ≤ 30 s .mp4, and `duration`
+//   in seconds. Its url/thumb are a still frame, so the tree and collage treat it like any photo.
 // - card.cardFront / card.cardBack: the printed card's images, { url, w, h } or null. The family
 //   sets them from the app's "Your card" screen.
 // Until real picks or card images exist, the page shows its painted samples and says so.
@@ -68,10 +70,18 @@ export function photosFromApi(list) {
       place: text(p.place),
       caption: text(p.caption),
       addedBy: text(p.addedBy),
+      video: p.type === 'video' && httpsUrl(p.video) ? p.video : null,
+      duration: p.type === 'video' && Number.isFinite(p.duration) && p.duration > 0 ? p.duration : null,
     }))
     .map((p, i) => ({ p, i, day: dayOf(p.takenAt) }))
     .sort((a, b) => (a.day && b.day ? a.day - b.day || a.i - b.i : a.day ? -1 : b.day ? 1 : a.i - b.i))
     .map(({ p }) => p)
+}
+
+/** "0:07", "0:30": a video's length for its badge. */
+export function durationText(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
 /** A typed name, tidied the way the API stores it: one line, single spaces, 40 characters at most. */

@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode } from "./data.js";
+import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
 // A personal link (?to=auntiesu) greets that person and shows the family's note to them.
@@ -28,6 +28,16 @@ function fitFont(c, text, family, size, maxW) {
 }
 const fullSrc = (p) => p.url || p.full || (p.full = p.source.toDataURL ? p.source.toDataURL("image/jpeg", 0.9) : p.source.src);
 
+// A round ▶ over a video's still frame.
+function drawPlay(c, x, y, r) {
+  c.save();
+  c.fillStyle = "rgba(0,0,0,0.45)"; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = "rgba(255,255,255,0.9)"; c.lineWidth = 2.5; c.stroke();
+  c.fillStyle = "#fff"; c.beginPath();
+  c.moveTo(x - r * 0.3, y - r * 0.45); c.lineTo(x + r * 0.5, y); c.lineTo(x - r * 0.3, y + r * 0.45); c.closePath(); c.fill();
+  c.restore();
+}
+
 // A polaroid: photo on top, the place hand-written underneath, the month in the corner.
 const PW = 256, PH = 312;
 function polaroidCanvas(p) {
@@ -36,6 +46,7 @@ function polaroidCanvas(p) {
   c.fillStyle = lin(c, 0, 0, PW, PH, [[0, "#faf6ee"], [1, "#ece4d4"]]); c.fillRect(0, 0, PW, PH);
   drawCover(c, p.source, pad, pad, sz, sz);
   c.strokeStyle = "rgba(0,0,0,0.12)"; c.strokeRect(pad + 0.5, pad + 0.5, sz - 1, sz - 1);
+  if (p.video) drawPlay(c, pad + sz / 2, pad + sz / 2, 30);
   const mid = pad + sz + (PH - pad - sz) / 2 + 2, month = MONTHS[dateOf(p).getMonth()];
   c.textBaseline = "middle"; c.fillStyle = "#8a5a2b"; c.textAlign = "right"; c.font = `26px ${HAND}`; c.fillText(month, PW - pad - 2, mid + 2);
   const monthW = c.measureText(month).width;
@@ -381,8 +392,16 @@ function openLightbox(i) {
   // Show the thumbnail the tree already loaded so the photo changes with its caption, then swap in the
   // full copy once it's decoded. Warm the neighbours' full copies so prev/next is instant.
   const img = $("lb-img"), at = lbIndex, quick = p.thumb || fullSrc(p);
-  img.src = quick; img.alt = p.caption || p.place || "Photo";
-  if (quick !== fullSrc(p)) preloadFull(p).then((u) => { if (u && lbIndex === at) img.src = u; }); // a failed load keeps the thumbnail
+  stopVideo();
+  img.src = quick; img.alt = p.caption || p.place || (p.video ? "Video" : "Photo");
+  if (p.video) {
+    // A video: its still frame until it plays. Muted so phones let it start by itself; the controls unmute.
+    // Nothing loads until it's opened (preload="none" and no src), so the tree never downloads video.
+    const v = $("lb-video");
+    v.poster = fullSrc(p); v.src = p.video; v.muted = true; v.setAttribute("aria-label", img.alt);
+    v.hidden = false; img.hidden = true;
+    v.play().catch(() => {}); // autoplay refused: the poster and controls stay
+  } else if (quick !== fullSrc(p)) preloadFull(p).then((u) => { if (u && lbIndex === at) img.src = u; }); // a failed load keeps the thumbnail
   [1, -1].forEach((d) => preloadFull(photos[(lbIndex + d + photos.length) % photos.length]));
   // The caption is hand-written on the polaroid and the place goes underneath; with no caption, the place takes its spot.
   $("lb-caption").textContent = p.caption || p.place || ""; $("lb-date").textContent = fmtDate(p);
@@ -394,7 +413,15 @@ function openLightbox(i) {
   holdRotation(0);
   if ($("collage").hidden) flyToPhoto(lbIndex, 0.48);
 }
+/** Stops the lightbox video and drops its download, so a closed or skipped video stops using data. */
+function stopVideo() {
+  const v = $("lb-video");
+  if (v.hidden) return;
+  v.pause(); v.removeAttribute("src"); v.removeAttribute("poster"); v.load();
+  v.hidden = true; $("lb-img").hidden = false;
+}
 function closeLightbox() {
+  stopVideo();
   $("lightbox").hidden = true; lbIndex = -1;
   if ($("collage").hidden) { flyHome(); holdRotation(5000); }
   lastFocus?.focus?.();
@@ -404,7 +431,8 @@ $("lb-prev").addEventListener("click", () => openLightbox(lbIndex - 1));
 $("lb-next").addEventListener("click", () => openLightbox(lbIndex + 1));
 $("lightbox").addEventListener("click", (e) => { if (e.target === $("lightbox")) closeLightbox(); });
 let swipe = null;
-$("lb-figure").addEventListener("pointerdown", (e) => (swipe = e.clientX));
+// Not on the video, where a drag is scrubbing its controls.
+$("lb-figure").addEventListener("pointerdown", (e) => (swipe = e.target.tagName === "VIDEO" ? null : e.clientX));
 $("lb-figure").addEventListener("pointerup", (e) => {
   if (swipe === null) return; const dx = e.clientX - swipe; swipe = null;
   if (Math.abs(dx) > 50) openLightbox(lbIndex + (dx < 0 ? 1 : -1));
@@ -423,8 +451,12 @@ function buildCollage() {
     idx.forEach((i) => {
       const p = photos[i], b = document.createElement("button"); b.type = "button"; b.className = "pol";
       b.style.setProperty("--rot", `${((rng(hash(p.id))() - 0.5) * 4).toFixed(2)}deg`);
-      b.setAttribute("aria-label", `${p.caption || "Photo"}, ${p.place || ""}, ${fmtDate(p)}`);
+      b.setAttribute("aria-label", `${p.caption || (p.video ? "Video" : "Photo")}, ${p.video ? "video, " : ""}${p.place || ""}, ${fmtDate(p)}`);
       const img = document.createElement("img"); img.loading = "lazy"; img.alt = ""; img.src = p.thumb || fullSrc(p);
+      if (p.video) {
+        const badge = document.createElement("span"); badge.className = "play"; badge.setAttribute("aria-hidden", "true");
+        badge.textContent = p.duration ? `▶ ${durationText(p.duration)}` : "▶"; b.append(badge);
+      }
       const cap = document.createElement("span"); cap.className = "cap";
       const pl = document.createElement("span"); pl.className = "place"; pl.textContent = p.place || "";
       const dt = document.createElement("span"); dt.className = "date"; dt.textContent = fmtDate(p);
