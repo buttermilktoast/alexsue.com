@@ -4,7 +4,8 @@ import { resolve } from 'node:path'
 
 function redirectColourRoute({ middlewares }) {
   middlewares.use((request, response, next) => {
-    const location = request.url?.replace(/^\/colour(?=\?|$)/, '/colour/')
+    // /colour → /colour/ like the static host; /color and /color/ go straight there too.
+    const location = request.url?.replace(/^\/(?:colour|color\/?)(?=\?|$)/, '/colour/')
     if (location && location !== request.url) {
       response.writeHead(302, { Location: location }).end()
       return
