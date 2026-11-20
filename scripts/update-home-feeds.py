@@ -51,9 +51,14 @@ def field(element, *names):
 
 
 def web_url(value, base):
-    url = urljoin(base, value)
-    parsed = urlsplit(url)
-    if value and parsed.scheme in {"http", "https"} and parsed.hostname and not parsed.username and not parsed.password:
+    if not value or not value.strip():
+        return None
+    try:
+        url = urljoin(base, value.strip())
+        parsed = urlsplit(url)
+    except ValueError:
+        return None
+    if parsed.scheme in {"http", "https"} and parsed.hostname and not parsed.username and not parsed.password:
         return url
     return None
 
@@ -82,15 +87,15 @@ def normalize_date(value):
     return date.astimezone(UTC).isoformat()
 
 
-class ComicImages(HTMLParser):
+class FeedImages(HTMLParser):
     def __init__(self):
         super().__init__()
         self.images = []
 
     def handle_starttag(self, name, attrs):
         values = dict(attrs)
-        if name == "img":
-            self.images.append(values.get("data-src") or values.get("src"))
+        if name == "img" and "1" not in (values.get("width"), values.get("height")):
+            self.images.append(values.get("data-src") or values.get("data-lazy-src") or values.get("src"))
         if name == "meta" and values.get("property") == "og:image":
             self.images.append(values.get("content"))
 
@@ -112,12 +117,55 @@ def pick_comic_image(values, base):
 
 
 def comic_image(item, base):
-    images = ComicImages()
+    images = FeedImages()
     images.feed(field(item, "encoded", "content", "description", "summary"))
     for element in item.iter():
         if tag(element) in {"content", "thumbnail", "enclosure"}:
             images.images.append(element.get("url"))
     return pick_comic_image(images.images, base)
+
+
+def thumbnail_url(value, base):
+    url = web_url(value, base)
+    if not url or not url.startswith("https:"):
+        return None
+    path = urlsplit(url).path.lower()
+    if any(part in path for part in ("gravatar", "spacer.", "pixel.", "placeholder.", "favicon.")):
+        return None
+    return url
+
+
+def story_thumbnail(item, base):
+    thumbnails = []
+    images = []
+    for element in item.iter():
+        if "1" in (element.get("width"), element.get("height")):
+            continue
+        kind = tag(element)
+        mime_type = element.get("type", "").lower()
+        if kind == "thumbnail":
+            thumbnails.append(element.get("url"))
+        elif kind in {"content", "enclosure", "link"}:
+            value = element.get("url") or element.get("href") or ""
+            if (
+                mime_type.startswith("image/")
+                or element.get("medium") == "image"
+                or (not mime_type and re.search(r"\.(jpe?g|png|webp|avif|gif)(?:[?#]|$)", value, re.I))
+            ):
+                images.append(value)
+        elif kind == "img":
+            images.append(element.get("data-src") or element.get("src"))
+        elif kind == "image":
+            images.append(element.get("url") or field(element, "url"))
+    for attr in ("description", "summary", "encoded", "content"):
+        html = FeedImages()
+        html.feed(field(item, attr))
+        images.extend(html.images)
+    for value in thumbnails + images:
+        url = thumbnail_url(value, base)
+        if url:
+            return url
+    return None
 
 
 def parse_feed(data, base, source):
@@ -145,6 +193,10 @@ def parse_feed(data, base, source):
         item = {"title": title[:400], "url": url, "date": date}
         if source["id"] == "foxtrot":
             item["image"] = comic_image(element, url)
+        else:
+            thumbnail = story_thumbnail(element, url)
+            if thumbnail:
+                item["thumbnail"] = thumbnail
         items.append(item)
     items.sort(key=lambda item: item["date"] or "", reverse=True)
     return items[:10]
@@ -166,13 +218,15 @@ def refresh_source(source, previous):
             if source["id"] == "foxtrot" and not items[0]["image"]:
                 try:
                     page, article = fetch(items[0]["url"])
-                    images = ComicImages()
+                    images = FeedImages()
                     images.feed(page.decode("utf-8", errors="replace"))
                     items[0]["image"] = pick_comic_image(images.images, article)
                 except (OSError, ValueError):
                     pass
             via = "Google News" if urlsplit(base).hostname == "news.google.com" else None
-            print(f"{source['name']}: {len(items)} items" + (f" via {via}" if via else ""), flush=True)
+            thumbnails = sum(bool(item.get("thumbnail")) for item in items)
+            details = f" ({thumbnails} with thumbnails)" if source["id"] != "foxtrot" else ""
+            print(f"{source['name']}: {len(items)} items{details}" + (f" via {via}" if via else ""), flush=True)
             return source["id"], {"items": items, "via": via, "updatedAt": RUN_TIME.isoformat(), "stale": False}
         except (OSError, ValueError, ElementTree.ParseError) as error:
             print(f"{source['name']} ({url}): {error}", file=sys.stderr, flush=True)

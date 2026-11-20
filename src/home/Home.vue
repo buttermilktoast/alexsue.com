@@ -25,6 +25,7 @@ const now = ref(new Date())
 const selectedCard = ref(null)
 const dragging = ref(null)
 const imageFailed = ref(false)
+const failedThumbnails = ref(new Set())
 const expandedSources = ref(new Set())
 const manager = ref(null)
 const themeDialog = ref(null)
@@ -294,7 +295,16 @@ onUnmounted(() => {
           <template v-else-if="itemsFor(source).length">
             <ul class="headlines">
               <li v-for="item in itemsFor(source).slice(0, expandedSources.has(source.id) ? 10 : 4)" :key="item.url">
-                <a :href="item.url" target="_blank" rel="noopener noreferrer"><span>{{ item.title }}</span><time v-if="item.date" :datetime="item.date" :title="shortDate(item.date)">{{ relativeTime(item.date) }}</time></a>
+                <a :href="item.url" target="_blank" rel="noopener noreferrer">
+                  <span class="headline-thumbnail" aria-hidden="true">
+                    <img v-if="item.thumbnail && !failedThumbnails.has(item.thumbnail)" :src="item.thumbnail"
+                      alt="" width="48" height="40" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+                      @error="failedThumbnails.add(item.thumbnail)" />
+                    <Icon v-else name="news" />
+                  </span>
+                  <span>{{ item.title }}</span>
+                  <time v-if="item.date" :datetime="item.date" :title="shortDate(item.date)">{{ relativeTime(item.date) }}</time>
+                </a>
               </li>
             </ul>
             <div class="card-footer">
