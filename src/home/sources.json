@@ -1,0 +1,19 @@
+[
+  {"id":"bbc","name":"BBC News","category":"News","mark":"BBC","color":"#9d3039","site":"https://www.bbc.com/news","feeds":["https://feeds.bbci.co.uk/news/rss.xml"],"enabled":true},
+  {"id":"engadget","name":"Engadget","category":"Tech","mark":"e","color":"#264a50","site":"https://www.engadget.com/","feeds":["https://www.engadget.com/rss.xml"],"enabled":true},
+  {"id":"foxtrot","name":"FoxTrot","category":"Comics","mark":"FT","color":"#885f37","site":"https://foxtrot.com/","feeds":["https://foxtrot.com/feed/"],"enabled":true},
+  {"id":"macrumors","name":"MacRumors","category":"Tech","mark":"M","color":"#764b3e","site":"https://www.macrumors.com/","feeds":["https://www.macrumors.com/macrumors.xml","https://feeds.macrumors.com/MacRumors-All"],"enabled":true},
+  {"id":"techcrunch","name":"TechCrunch","category":"Tech","mark":"TC","color":"#356547","site":"https://techcrunch.com/","feeds":["https://techcrunch.com/feed/"],"enabled":true},
+  {"id":"gamedev","name":"Game Developer","category":"Games","mark":"GD","color":"#594974","site":"https://www.gamedeveloper.com/","feeds":["https://www.gamedeveloper.com/rss.xml"],"enabled":true},
+  {"id":"cnn","name":"CNN","category":"News","mark":"CNN","color":"#9d3039","site":"https://www.cnn.com/","feeds":[],"googleNews":"cnn.com","enabled":true},
+  {"id":"mashable","name":"Mashable","category":"Tech","mark":"m","color":"#315b87","site":"https://mashable.com/","feeds":["https://mashable.com/feeds/rss/all"],"enabled":true},
+  {"id":"cnet","name":"CNET","category":"Tech","mark":"C","color":"#892e35","site":"https://www.cnet.com/","feeds":["https://www.cnet.com/rss/news/"],"enabled":true},
+  {"id":"huffpost","name":"HuffPost","category":"News","mark":"H","color":"#406451","site":"https://www.huffpost.com/","feeds":["https://www.huffpost.com/section/front-page/feed","https://www.huffpost.com/feeds/index.xml"],"googleNews":"huffpost.com","enabled":true},
+  {"id":"yahoo","name":"Yahoo News","category":"News","mark":"Y!","color":"#694687","site":"https://news.yahoo.com/","feeds":["https://news.yahoo.com/rss/topstories"],"enabled":true},
+  {"id":"pcworld","name":"PCWorld","category":"Tech","mark":"PC","color":"#793e42","site":"https://www.pcworld.com/","feeds":["https://www.pcworld.com/feed","https://www.pcworld.com/index.rss"],"enabled":true},
+  {"id":"verge","name":"The Verge","category":"Tech","mark":"V","color":"#625482","site":"https://www.theverge.com/","feeds":["https://www.theverge.com/rss/index.xml"],"enabled":false},
+  {"id":"ars","name":"Ars Technica","category":"Tech","mark":"ars","color":"#905139","site":"https://arstechnica.com/","feeds":["https://arstechnica.com/feed/"],"enabled":false},
+  {"id":"wired","name":"WIRED","category":"Tech","mark":"W","color":"#505958","site":"https://www.wired.com/","feeds":["https://www.wired.com/feed/rss"],"enabled":false},
+  {"id":"npr","name":"NPR","category":"News","mark":"npr","color":"#436081","site":"https://www.npr.org/","feeds":["https://feeds.npr.org/1001/rss.xml"],"enabled":false},
+  {"id":"hackernews","name":"Hacker News","category":"Tech","mark":"Y","color":"#955538","site":"https://news.ycombinator.com/","feeds":["https://news.ycombinator.com/rss"],"enabled":false}
+]

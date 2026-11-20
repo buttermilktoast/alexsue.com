@@ -13,3 +13,7 @@ shortcuts/__pycache__/
 
 # Planning notes are kept locally, not published with the public repo.
 plans/
+
+# Published headline snapshot, created by the Pages build
+/public/home/feeds.json
+/public/home/feeds.tmp

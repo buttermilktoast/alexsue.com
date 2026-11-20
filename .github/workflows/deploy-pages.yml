@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '23 */3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -34,6 +36,24 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
+
+      - name: Restore the last headline snapshot
+        uses: actions/cache/restore@v5
+        with:
+          path: public/home/feeds.json
+          key: home-feeds-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: home-feeds-v1-
+
+      - name: Update headlines
+        run: python3 scripts/update-home-feeds.py
+        continue-on-error: true
+
+      - name: Cache usable headlines
+        if: ${{ hashFiles('public/home/feeds.json') != '' }}
+        uses: actions/cache/save@v5
+        with:
+          path: public/home/feeds.json
+          key: home-feeds-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Build
         env:

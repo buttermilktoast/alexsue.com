@@ -49,6 +49,14 @@ where these are unset, it shows `version development`.
 
 `public/CNAME` keeps the `alexsue.com` custom domain attached to each deploy.
 
+## The start page
+
+`alexsue.com/home/` shows RSS headlines and the Sunday FoxTrot strip. GitHub Pages
+refreshes the snapshots on deploy and every three hours. If a publisher fails to
+respond, the build keeps its last available headlines. The feed catalog is in
+[`src/home/sources.json`](src/home/sources.json). To populate it during local
+development, run `python3 scripts/update-home-feeds.py` from the checkout.
+
 ## The family card
 
 `alexsue.com/xmas26/` is the family Christmas card: a 3D tree of the year's
