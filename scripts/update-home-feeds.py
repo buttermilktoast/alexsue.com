@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 import sys
 from urllib.parse import urljoin, urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,13 +91,16 @@ class FeedImages(HTMLParser):
     def __init__(self):
         super().__init__()
         self.images = []
+        self.previews = []
 
     def handle_starttag(self, name, attrs):
         values = dict(attrs)
         if name == "img" and "1" not in (values.get("width"), values.get("height")):
             self.images.append(values.get("data-src") or values.get("data-lazy-src") or values.get("src"))
-        if name == "meta" and values.get("property") == "og:image":
-            self.images.append(values.get("content"))
+        if name == "meta" and (values.get("property") or values.get("name")) in {
+            "og:image", "og:image:secure_url", "twitter:image"
+        }:
+            self.previews.append(values.get("content"))
 
 
 def pick_comic_image(values, base):
@@ -122,7 +125,7 @@ def comic_image(item, base):
     for element in item.iter():
         if tag(element) in {"content", "thumbnail", "enclosure"}:
             images.images.append(element.get("url"))
-    return pick_comic_image(images.images, base)
+    return pick_comic_image(images.images + images.previews, base)
 
 
 def thumbnail_url(value, base):
@@ -166,6 +169,46 @@ def story_thumbnail(item, base):
         if url:
             return url
     return None
+
+
+class StayOnPublisher(HTTPRedirectHandler):
+    def redirect_request(self, request, file, code, message, headers, new_url):
+        return None
+
+
+def add_publisher_thumbnails(items, source, previous):
+    publisher = urlsplit(source["site"]).hostname.removeprefix("www.")
+    cached = {item["url"]: item["thumbnail"] for item in previous.get("items", []) if item.get("thumbnail")}
+    opener = build_opener(StayOnPublisher())
+    for item in items:
+        if item.get("thumbnail"):
+            continue
+        url = item["url"]
+        if url in cached:
+            item["thumbnail"] = cached[url]
+            continue
+        article = urlsplit(url)
+        hostname = article.hostname
+        if article.scheme != "https" or not (hostname == publisher or hostname.endswith(f".{publisher}")):
+            continue
+        try:
+            if article.port not in (None, 443):
+                continue
+            request = Request(url, headers={"User-Agent": "DailyBrief RSS reader (+https://alexsue.com/home/)"})
+            with opener.open(request, timeout=4) as response:
+                if response.headers.get_content_type() != "text/html":
+                    continue
+                head = response.read(192 * 1024).decode("utf-8", errors="replace")
+            images = FeedImages()
+            images.feed(re.split(r"</head\s*>", head, maxsplit=1, flags=re.I)[0])
+            for candidate in images.previews:
+                thumbnail = thumbnail_url(candidate, url)
+                if thumbnail:
+                    item["thumbnail"] = thumbnail
+                    break
+        except (OSError, ValueError):
+            # A preview failure should never hide a headline.
+            continue
 
 
 def parse_feed(data, base, source):
@@ -220,10 +263,12 @@ def refresh_source(source, previous):
                     page, article = fetch(items[0]["url"])
                     images = FeedImages()
                     images.feed(page.decode("utf-8", errors="replace"))
-                    items[0]["image"] = pick_comic_image(images.images, article)
+                    items[0]["image"] = pick_comic_image(images.images + images.previews, article)
                 except (OSError, ValueError):
                     pass
             via = "Google News" if urlsplit(base).hostname == "news.google.com" else None
+            if not via and source["id"] not in {"foxtrot", "hackernews"}:
+                add_publisher_thumbnails(items, source, previous.get(source["id"], {}))
             thumbnails = sum(bool(item.get("thumbnail")) for item in items)
             details = f" ({thumbnails} with thumbnails)" if source["id"] != "foxtrot" else ""
             print(f"{source['name']}: {len(items)} items{details}" + (f" via {via}" if via else ""), flush=True)
