@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText } from "./data.js";
+import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
 // A personal link (?to=auntiesu) greets that person and shows the family's note to them.
@@ -21,6 +21,7 @@ const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "Ju
 // The day a photo was taken. A photo without a date goes at the end of the year.
 const dateOf = (p) => p.date || (p.date = dayOf(p.takenAt) ?? new Date(YEAR, 11, 31));
 const fmtDate = (p) => `${MONTHS[dateOf(p).getMonth()]} ${dateOf(p).getDate()}`;
+let photoHistory;
 
 function fitFont(c, text, family, size, maxW) {
   let s = size; c.font = `${s}px ${family}`;
@@ -40,13 +41,18 @@ function drawPlay(c, x, y, r) {
 
 // A polaroid: photo on top, the place hand-written underneath, the month in the corner.
 const PW = 256, PH = 312;
-function polaroidCanvas(p) {
-  const cv = document.createElement("canvas"); cv.width = PW; cv.height = PH;
+function polaroidCanvas(p, cv = document.createElement("canvas")) {
+  cv.width = PW; cv.height = PH;
   const c = cv.getContext("2d"), pad = 14, sz = PW - pad * 2;
   c.fillStyle = lin(c, 0, 0, PW, PH, [[0, "#faf6ee"], [1, "#ece4d4"]]); c.fillRect(0, 0, PW, PH);
   drawCover(c, p.source, pad, pad, sz, sz);
   c.strokeStyle = "rgba(0,0,0,0.12)"; c.strokeRect(pad + 0.5, pad + 0.5, sz - 1, sz - 1);
   if (p.video) drawPlay(c, pad + sz / 2, pad + sz / 2, 30);
+  if (photoHistory.isNew(p)) {
+    c.beginPath(); c.arc(pad + 26, pad + 26, 17, 0, Math.PI * 2);
+    c.fillStyle = "#f3b65b"; c.fill();
+    c.strokeStyle = "#2a241c"; c.lineWidth = 5; c.stroke();
+  }
   const mid = pad + sz + (PH - pad - sz) / 2 + 2, month = MONTHS[dateOf(p).getMonth()];
   c.textBaseline = "middle"; c.fillStyle = "#8a5a2b"; c.textAlign = "right"; c.font = `26px ${HAND}`; c.fillText(month, PW - pad - 2, mid + 2);
   const monthW = c.measureText(month).width;
@@ -144,7 +150,7 @@ function buildTree(list) {
     mesh.scale.setScalar(scale);
     mesh.userData.index = i;
     tree.add(mesh);
-    pols.push({ mesh, photo, theta: p.th, y: p.y, t, home: { pos: mesh.position.clone(), quat: mesh.quaternion.clone(), scale }, boost: 1, delay: 1.05 + (i / Math.max(1, N - 1)) * 2.3 });
+    pols.push({ mesh, photo, texture: tex, theta: p.th, y: p.y, t, home: { pos: mesh.position.clone(), quat: mesh.quaternion.clone(), scale }, boost: 1, delay: 1.05 + (i / Math.max(1, N - 1)) * 2.3 });
   });
 
   // Fairy lights on their own strand, half a turn-pitch above the photos.
@@ -410,6 +416,7 @@ function openLightbox(i) {
   const fig = $("lb-figure"); fig.style.animation = "none"; void fig.offsetWidth; fig.style.animation = "";
   const lb = $("lightbox");
   if (lb.hidden) { lastFocus = document.activeElement; lb.hidden = false; $("lb-next").focus(); }
+  markPhotoViewed(lbIndex);
   holdRotation(0);
   if ($("collage").hidden) flyToPhoto(lbIndex, 0.48);
 }
@@ -438,8 +445,31 @@ $("lb-figure").addEventListener("pointerup", (e) => {
   if (Math.abs(dx) > 50) openLightbox(lbIndex + (dx < 0 ? 1 : -1));
 });
 
+const collagePhotos = [];
+
+function updateNewPhotoCount() {
+  const count = photos.filter(photoHistory.isNew).length;
+  const badge = $("new-photo-count");
+  badge.textContent = count ? `${count} new` : "";
+  badge.hidden = !count;
+  stripFade($("tools"));
+}
+
+function markPhotoViewed(i) {
+  const photo = photos[i];
+  if (!photoHistory.markViewed(photo)) return;
+  const { button, badge, label } = collagePhotos[i];
+  badge.hidden = true;
+  button.setAttribute("aria-label", label);
+  const { texture } = pols[i];
+  polaroidCanvas(photo, texture.image);
+  texture.needsUpdate = true;
+  updateNewPhotoCount();
+}
+
 function buildCollage() {
   const body = $("collage-body"); body.replaceChildren();
+  collagePhotos.length = 0;
   $("collage-title").textContent = `${photos.length} photos from ${YEAR}`;
   const byMonth = new Map();
   photos.forEach((p, i) => { const m = dateOf(p).getMonth(); if (!byMonth.has(m)) byMonth.set(m, []); byMonth.get(m).push(i); });
@@ -451,7 +481,13 @@ function buildCollage() {
     idx.forEach((i) => {
       const p = photos[i], b = document.createElement("button"); b.type = "button"; b.className = "pol";
       b.style.setProperty("--rot", `${((rng(hash(p.id))() - 0.5) * 4).toFixed(2)}deg`);
-      b.setAttribute("aria-label", `${p.caption || (p.video ? "Video" : "Photo")}, ${p.video ? "video, " : ""}${p.place || ""}, ${fmtDate(p)}`);
+      const isNew = photoHistory.isNew(p);
+      const label = [p.caption || (p.video ? "Video" : "Photo"), p.caption && p.video ? "video" : "", p.place, fmtDate(p)].filter(Boolean).join(", ");
+      b.setAttribute("aria-label", isNew ? `New. ${label}` : label);
+      const badge = document.createElement("span"); badge.className = "new-photo-badge";
+      badge.textContent = "New"; badge.hidden = !isNew; badge.setAttribute("aria-hidden", "true");
+      b.append(badge);
+      collagePhotos[i] = { button: b, badge, label };
       const img = document.createElement("img"); img.loading = "lazy"; img.alt = ""; img.src = p.thumb || fullSrc(p);
       if (p.video) {
         const badge = document.createElement("span"); badge.className = "play"; badge.setAttribute("aria-hidden", "true");
@@ -641,6 +677,7 @@ function setPhotos(list) {
   photos = list; activeMonth = -1; monthLit.clear();
   setCardMode(false);
   buildTree(photos); buildMonths(); buildCollage(); stripFade($("months"));
+  updateNewPhotoCount();
   $("lede").textContent = `${photos.length} moments from our year, hung on the tree.`;
   startIntro();
 }
@@ -736,6 +773,7 @@ async function loadYear(paintedPhotos, paintedCard) {
   const [front, back] = await Promise.all([urls.front, urls.back].map((u) => (u ? loadImg(u).catch(() => null) : null)));
   return {
     recipient: recipientFromApi(data?.recipient),
+    picks,
     photos: list.length ? list : paintedPhotos,
     card: { front: front || paintedCard.front, back: back || paintedCard.back },
     label: previewLabel({ realPhotos: list.length > 0, realFront: !!front, realBack: !!back }),
@@ -757,6 +795,7 @@ async function loadYear(paintedPhotos, paintedCard) {
   if (year.recipient) hello = greetRecipient(year.recipient);
   else if (TO && storedName() === null) hello = openHello();   // a code we don't know: ask, like everyone else
   await hello;
+  photoHistory = createPhotoHistory(year.picks);
   setPhotos(year.photos);
   requestAnimationFrame(frame);
   $("loading").classList.add("gone");

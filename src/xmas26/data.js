@@ -1,5 +1,5 @@
 // The family's year, from the MerryRoll API (merryroll repo: api/README.md, SPEC §4.2).
-// Pure functions, no DOM, so `node --test` covers them.
+// No DOM dependencies, so `node --test` covers these helpers.
 //
 // GET /card is public and returns { recipient, card, photos }:
 // - recipient: { name, message } when the link carries a known personal code (?to=auntiesu), else
@@ -62,6 +62,7 @@ export function photosFromApi(list) {
     .filter((p) => p && httpsUrl(p.url))
     .map((p, i) => ({
       id: text(p.id) || `p${i}`,
+      viewKey: text(p.id) ? `id:${text(p.id)}` : `url:${p.url.split(/[?#]/, 1)[0]}`,
       url: p.url,
       thumb: httpsUrl(p.thumb) ? p.thumb : p.url,
       w: p.w,
@@ -76,6 +77,39 @@ export function photosFromApi(list) {
     .map((p, i) => ({ p, i, day: dayOf(p.takenAt) }))
     .sort((a, b) => (a.day && b.day ? a.day - b.day || a.i - b.i : a.day ? -1 : b.day ? 1 : a.i - b.i))
     .map(({ p }) => p)
+}
+
+const PHOTO_HISTORY_KEY = `xmas${YEAR % 100}-viewed-photos-v1`
+
+/** First visit sets the baseline. After that, only opening a new pick marks it viewed. */
+export function createPhotoHistory(picks, getStorage = () => globalThis.localStorage) {
+  const read = () => {
+    try {
+      const stored = JSON.parse(getStorage()?.getItem(PHOTO_HISTORY_KEY) ?? 'null')
+      if (Array.isArray(stored)) return new Set(stored.filter((key) => typeof key === 'string' && key))
+    } catch { /* Unavailable or invalid history is treated like a first visit. */ }
+    return null
+  }
+  const saved = read()
+  const viewed = saved ?? new Set(picks.map((p) => p.viewKey).filter(Boolean))
+  const write = () => {
+    try {
+      const keys = new Set([...(read() ?? []), ...viewed])
+      getStorage()?.setItem(PHOTO_HISTORY_KEY, JSON.stringify([...keys]))
+    } catch { /* Keep the history for this visit even when storage is blocked. */ }
+  }
+  if (!saved && viewed.size) write()
+
+  const isNew = (photo) => Boolean(photo.viewKey && !viewed.has(photo.viewKey))
+  return {
+    isNew,
+    markViewed(photo) {
+      if (!isNew(photo)) return false
+      viewed.add(photo.viewKey)
+      write()
+      return true
+    },
+  }
 }
 
 /** "0:07", "0:30": a video's length for its badge. */

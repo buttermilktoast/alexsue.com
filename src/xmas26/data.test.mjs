@@ -1,7 +1,7 @@
 // node --test src/xmas26/data.test.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayOf, photosFromApi, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText } from './data.js'
+import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText } from './data.js'
 
 test('dayOf keeps the calendar day the photo was taken, in its own time zone', () => {
   const d = dayOf('2026-07-12T23:30:00-10:00')
@@ -24,6 +24,50 @@ test('photosFromApi: showable photos only, oldest first, undated last', () => {
   assert.equal(photos[2].takenAt, null)
   assert.ok(!('fingerprint' in photos[0]))
   assert.deepEqual(photosFromApi(undefined), [])
+})
+
+test('return visits flag only new picks and keep the badge until each is opened', () => {
+  const [old, video, newPhoto] = photosFromApi([
+    { id: 'old', url: 'https://cdn/old.jpg' },
+    { id: 'new-video', type: 'video', url: 'https://cdn/poster.jpg', video: 'https://cdn/clip.mp4' },
+    { id: 'new-photo', url: 'https://cdn/new.jpg' },
+  ])
+  const store = new Map()
+  const getStorage = () => ({ getItem: (key) => store.get(key), setItem: (key, value) => store.set(key, value) })
+  assert.equal(createPhotoHistory([old], getStorage).isNew(old), false)
+
+  const picks = [video, old, newPhoto]
+  const returnVisit = createPhotoHistory(picks, getStorage)
+  const otherTab = createPhotoHistory(picks, getStorage)
+  assert.deepEqual(picks.map(returnVisit.isNew), [true, false, true])
+  assert.deepEqual(picks.map(createPhotoHistory(picks, getStorage).isNew), [true, false, true])
+  assert.equal(returnVisit.markViewed(video), true)
+  assert.equal(returnVisit.isNew(video), false)
+  assert.equal(returnVisit.markViewed(video), false)
+  assert.equal(otherTab.markViewed(newPhoto), true)
+  assert.deepEqual(picks.map(createPhotoHistory(picks, getStorage).isNew), [false, false, false])
+})
+
+test('legacy photo keys survive a reordered list and refreshed signed URLs', () => {
+  const [first, second] = photosFromApi([{ url: 'https://cdn/first.jpg?a=1' }, { url: 'https://cdn/second.jpg' }])
+  const [secondAgain, firstAgain] = photosFromApi([{ url: second.url }, { url: 'https://cdn/first.jpg?a=2' }])
+  assert.equal(firstAgain.viewKey, first.viewKey)
+  assert.equal(secondAgain.viewKey, second.viewKey)
+  assert.notEqual(first.viewKey, second.viewKey)
+})
+
+test('sample photos never set a baseline and unavailable storage does not stop the card', () => {
+  const sample = { id: 's1' }
+  let writes = 0
+  const store = () => ({ getItem: () => '{invalid', setItem: () => { writes++ } })
+  const preview = createPhotoHistory([sample], store)
+  assert.equal(preview.isNew(sample), false)
+  assert.equal(preview.markViewed(sample), false)
+  assert.equal(writes, 0)
+
+  const unavailable = () => { throw new Error('Storage blocked') }
+  const [photo] = photosFromApi([{ id: 'one', url: 'https://cdn/one.jpg' }])
+  assert.equal(createPhotoHistory([photo], unavailable).isNew(photo), false)
 })
 
 test('cardFaces: https images only, null for a missing side', () => {
