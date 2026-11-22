@@ -123,6 +123,10 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   see anonymous counts; `POST /reactions` adds or takes one back, and localStorage remembers this
   browser's taps. The row shows only when `GET /card` lists `reactions` (`null` = the family turned
   them off with `reactions: false` in the card JSON; an older API sends nothing) and never on the samples.
+- **Tree zoom and move:** pinch/scroll zooms toward the fingers/cursor, and a two-finger drag
+  (right- or shift-drag with a mouse) slides up and down the tree. `keepOnTree` keeps the view on
+  the trunk (so turning still spins the tree in place), between the card and the star, and sets
+  the closest distance from the tree's width at that height so a zoom stops at the photos.
 - **Card view zoom:** in card view (only), pinch or scroll zooms toward the fingers/cursor up to
   `CARD_ZOOM`× the fitted size; zoomed in, a drag pans and stops at the card's edges (`keepOnCard`),
   and a tap fits it back. The tree's own limits (`TREE_MIN_DIST`, no pan) come back on leaving.

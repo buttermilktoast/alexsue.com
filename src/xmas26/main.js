@@ -71,7 +71,10 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x08130f, 0.032);
 const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
 const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false;
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+// Pinch or scroll zooms toward the fingers or cursor, and two fingers (or right/shift-drag) move the
+// view: up and down the tree (keepOnTree), or around the card in card view (keepOnCard).
+controls.enablePan = true; controls.zoomToCursor = true;
 const TREE_MIN_DIST = 1.6;
 controls.minDistance = TREE_MIN_DIST; controls.maxDistance = 16; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.85;
 controls.autoRotateSpeed = 0.55;
@@ -608,8 +611,7 @@ function setCardMode(on) {
   cardMode = on;
   $("btn-flip-label").textContent = on ? "Flip it" : "See our card";
   $("btn-tree").hidden = !on;
-  // Zooming in on the card: pinch or scroll toward a spot, and pan once zoomed (cardGestures).
-  controls.enablePan = on; controls.zoomToCursor = on;
+  // Zooming in on the card: one finger pans once zoomed in (cardGestures).
   controls.minDistance = on ? cardView().radius / CARD_ZOOM : TREE_MIN_DIST;
   if (on && card) card.position.y = card.userData.baseY;   // hold still to be read, no bobbing
   cardGestures();
@@ -628,11 +630,12 @@ async function showCard() {
 // Zooming in on the card, in card view only: pinch (or scroll) toward a spot, up to CARD_ZOOM× the
 // fitted size. The 2026 front is 1389 px wide, sharp to about 2× on a phone; past that it softens. Zoomed in, one finger (or the
 // mouse) slides over the card instead of turning it, and can't slide past its edges; a tap fits it
-// back. The tree keeps its own limits, so this never changes how the tree turns.
+// back. Leaving card view puts the tree's own limits back.
 // ---------------------------------------------------------------------------------------------
 const CARD_ZOOM = 3;
 const FINE_POINTER = matchMedia("(pointer: fine)").matches;
-const HINT = document.querySelector(".mast .hint").textContent;
+const TREE_HINT = FINE_POINTER ? "Drag to turn it, scroll to zoom. Tap a photo, or the card." : "Drag to turn, pinch to zoom. Tap a photo or the card.";
+document.querySelector(".mast .hint").textContent = TREE_HINT;
 const cardZoomed = () => cardMode && current().radius < cardView().radius * 0.92;
 function fitCard() { holdRotation(0); return flyTo(cardView(), 0.5); }
 let zoomedBefore = null;
@@ -642,7 +645,7 @@ function cardGestures() {
   zoomedBefore = zoomed;
   controls.touches.ONE = zoomed ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
   controls.mouseButtons.LEFT = zoomed ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
-  document.querySelector(".mast .hint").textContent = !cardMode ? HINT
+  document.querySelector(".mast .hint").textContent = !cardMode ? TREE_HINT
     : zoomed ? `Drag to look around. ${FINE_POINTER ? "Click" : "Tap"} to fit it back.`
     : FINE_POINTER ? "Scroll to zoom in. Click the card to flip it." : "Pinch to zoom in. Tap the card to flip it.";
 }
@@ -663,7 +666,24 @@ function keepOnCard() {
   shift.copy(cardRight).multiplyScalar(du); shift.y += dv;
   t.add(shift); camera.position.add(shift);
 }
-controls.addEventListener("change", () => { if (cardMode) { keepOnCard(); cardGestures(); } });
+/**
+ * On the tree, a two-finger drag (or a zoom toward a spot) slides the view up and down the trunk,
+ * from the star to the card. It stays on the trunk, so turning it still spins the tree in place
+ * rather than swinging around a point off to one side. The closest you can get follows the tree's
+ * width at that height, so a zoom stops at the photos instead of going through them.
+ */
+function keepOnTree() {
+  if (cardMode || flying || !introDone) return;
+  const t = controls.target;
+  // From the card to the star in the middle of the screen, never off into the floor or the sky; the
+  // home view's height always fits, so letting go after a turn never jumps.
+  const home = framing().targetY, lo = Math.min(CARD_Y, home), hi = Math.max(TREE_T + 0.3, home);
+  shift.set(-t.x, THREE.MathUtils.clamp(t.y, lo, hi) - t.y, -t.z);
+  if (shift.x || shift.y || shift.z) { t.add(shift); camera.position.add(shift); }
+  const across = R_B + (R_T - R_B) * clamp01((t.y - TREE_B) / (TREE_T - TREE_B));
+  controls.minDistance = Math.max(TREE_MIN_DIST, (t.y < TREE_B ? 0 : across) + 0.45);   // 2.4 at the bottom: where a tapped photo flies to
+}
+controls.addEventListener("change", () => { if (cardMode) { keepOnCard(); cardGestures(); } else keepOnTree(); });
 function leaveCard() { setCardMode(false); flyHome(); holdRotation(3000); }
 $("btn-flip").addEventListener("click", showCard);
 $("btn-tree").addEventListener("click", leaveCard);
