@@ -4,12 +4,6 @@ import { site } from '../data/site.js'
 const fullCommit = import.meta.env.VITE_GIT_COMMIT || 'development'
 const isDev = fullCommit === 'development'
 const shortCommit = isDev ? 'development' : fullCommit.slice(0, 7)
-
-const repository = import.meta.env.VITE_GITHUB_REPOSITORY
-const commitUrl =
-  repository && !isDev
-    ? `https://github.com/${repository}/commit/${fullCommit}`
-    : null
 </script>
 
 <template>
@@ -18,15 +12,7 @@ const commitUrl =
     <span aria-hidden="true">·</span>
     <span>
       version
-      <a
-        v-if="commitUrl"
-        class="commit"
-        :href="commitUrl"
-        :title="fullCommit"
-        rel="noopener"
-        target="_blank"
-      >{{ shortCommit }}</a>
-      <span v-else class="commit" :title="fullCommit">{{ shortCommit }}</span>
+      <span class="commit" :title="fullCommit">{{ shortCommit }}</span>
     </span>
   </footer>
 </template>

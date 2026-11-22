@@ -79,9 +79,9 @@ small AWS pipeline that feeds it live health data pushed from a phone.
 - `useWeather` is created **once** in `App.vue` and handed to both
   `ConditionsSection` and the sky through `provide`/`inject` (`weatherKey`);
   calling the composable twice would poll Open-Meteo twice for one number.
-- The **footer** shows the deployed commit from `VITE_GIT_COMMIT` /
-  `VITE_GITHUB_REPOSITORY`, injected by the deploy workflow; locally it reads
-  `version development`.
+- The **footer** shows the deployed commit from `VITE_GIT_COMMIT`, injected by
+  the deploy workflow, as plain text — deliberately not linked to the repo;
+  locally it reads `version development`.
 - Pure, exported functions in the composables/lambda carry the logic and the
   tests; the Vue wrapper and the Lambda handler are thin shells around them.
 

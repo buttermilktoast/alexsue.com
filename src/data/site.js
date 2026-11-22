@@ -106,11 +106,10 @@ export const site = {
     { label: 'Site', value: 'operational', state: 'ok' },
     { label: 'Side projects', value: 'too many', state: 'warn' },
     { label: 'Current device', value: 'MacBook Pro Proled XDR 😁', state: 'idle' },
-    { label: 'Playing', value: 'Legend of Zelda: Ocarina of Time', state: 'idle' }
+    { label: 'Playing', value: 'Legend of Zelda: Ocarina of Time & GTA VI', state: 'idle' }
   ],
 
   links: [
-    { label: 'GitHub', href: 'https://github.com/buttermilktoast', external: true },
     { label: 'Instagram', href: 'https://instagram.com/buttermilktoasty', external: true }
   ]
 }
