@@ -118,6 +118,15 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   to the MerryRoll API and its photo CDN, the card uses the shared
   `src/analytics.js` GA4 initializer, enabled at the owner's request. Analytics
   runs only in production on the site's domains with a valid measurement ID.
+- **Emoji reactions:** under each photo in the lightbox, visitors tap one of a fixed set
+  (`REACTION_EMOJI` in `data.js`, the same keys as `REACTIONS` in the merryroll API) and
+  see anonymous counts; `POST /reactions` adds or takes one back, and localStorage remembers this
+  browser's taps. The row shows only when `GET /card` lists `reactions` (`null` = the family turned
+  them off with `reactions: false` in the card JSON; an older API sends nothing) and never on the samples.
+- **Lightbox sizing:** `fitLightbox` in `main.js` measures the caption, place, reactions and ‹ › row and
+  gives the photo what's left. Don't go back to a `vh` max-height: on iOS, `vh` is the height with
+  Safari's toolbars hidden, which pushed the ✕ and the arrows off a phone screen. A phone on its side
+  puts them beside the photo instead.
 - "Get the app" posts to the API's `POST /waitlist`. The API's CORS list allows
   `https://alexsue.com` and `http://localhost:5173` only, so test locally on
   5173 (`npm run dev`, or `npx vite preview --port 5173`).

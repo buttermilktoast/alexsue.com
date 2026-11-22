@@ -115,7 +115,7 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 /* ---- Lightbox ---- */
 .lightbox {
   position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 14px; padding-block: calc(env(safe-area-inset-top, 0px) + 56px) calc(env(safe-area-inset-bottom, 0px) + 20px);
+  gap: 14px; padding-block: calc(env(safe-area-inset-top, 0px) + 62px) calc(env(safe-area-inset-bottom, 0px) + 20px); /* 62: the tilted polaroid's corner clears the ✕ */
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: rgba(5, 12, 10, 0.66); backdrop-filter: blur(5px);
 }
@@ -125,7 +125,10 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   animation: lb-in 0.45s cubic-bezier(.2, .8, .2, 1);
 }
 @keyframes lb-in { from { opacity: 0; transform: translateY(18px) rotate(-3deg) scale(.96); } }
-.lb-polaroid img, .lb-polaroid video { display: block; width: 100%; max-height: min(63vh, 620px); object-fit: contain; background: #1b1814; }
+/* main.js (fitLightbox) sizes the photo to the room left once the caption, place, reactions and ‹ › row
+   are measured, so nothing is pushed off a phone's screen by its toolbars. This max-height is the fallback. */
+.lb-polaroid img, .lb-polaroid video { display: block; width: 100%; max-height: min(55dvh, 620px); object-fit: contain; background: #1b1814; }
+.lb-polaroid.fitted img, .lb-polaroid.fitted video { max-height: none; }
 .lb-polaroid video[hidden], .lb-polaroid img[hidden] { display: none; }
 .lb-polaroid figcaption {
   display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
@@ -137,6 +140,20 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 .lb-meta p { margin: 0; }
 #lb-place { font-size: 1.05rem; color: var(--ink); }
 #lb-by { font-size: 0.85rem; color: var(--muted); }
+/* Emoji reactions: tap one, tap it again to take it back. The count shows once anyone has. */
+.lb-react { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px; }
+.react {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; height: 40px; padding: 0 11px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--glass); cursor: pointer; font-size: 1.1rem; line-height: 1;
+  -webkit-tap-highlight-color: transparent; transition: background 0.15s ease, border-color 0.15s ease;
+}
+.react:hover { border-color: rgba(243, 182, 91, 0.6); }
+.react[aria-pressed="true"] { border-color: var(--ember); background: rgba(243, 182, 91, 0.24); }
+.react .n { font-size: 0.82rem; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--ink); }
+.react .n:empty { display: none; }
+.react .e { display: inline-block; }
+.react.pop .e { animation: react-pop 0.38s cubic-bezier(.2, .8, .2, 1); }
+@keyframes react-pop { 45% { transform: scale(1.45) rotate(-8deg); } }
 .lb-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 6px; }
 .lb-row output { min-width: 5.5rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.9rem; }
 .round {
@@ -254,8 +271,25 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   .tools::-webkit-scrollbar { display: none; }
   .pill { flex: none; min-height: 40px; padding: 0 0.85rem; font-size: 0.82rem; white-space: nowrap; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
+  .lightbox { gap: 10px; }
+  .lb-polaroid { padding: 10px 10px 0; }
+  .lb-polaroid figcaption { font-size: 1.75rem; padding-bottom: 0.45rem; }
+  .lb-polaroid figcaption .date { font-size: 1.35rem; }
+  .lb-react { gap: 5px; margin-top: 4px; }
+  .react { min-width: 40px; height: 38px; padding: 0 9px; gap: 4px; }
+  .lb-row { margin-top: 2px; }
+}
+/* A phone on its side: too short for a photo with everything under it, so the words and buttons go beside it. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .lightbox {
+    flex-direction: row; gap: 20px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    padding-right: max(68px, calc(env(safe-area-inset-right, 0px) + 60px)); /* clear of the ✕ */
+  }
+  .lb-meta { width: min(300px, 40%); flex: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lb-polaroid { animation: none; }
+  .react.pop .e { animation: none; }
   .pol, #loading { transition: none; }
 }

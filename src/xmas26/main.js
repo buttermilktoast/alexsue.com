@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText } from "./data.js";
+import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, createReactionMemory, postReaction, REACTION_EMOJI, REACTION_NAMES } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
 // A personal link (?to=auntiesu) greets that person and shows the family's note to them.
@@ -413,13 +413,93 @@ function openLightbox(i) {
   $("lb-caption").textContent = p.caption || p.place || ""; $("lb-date").textContent = fmtDate(p);
   $("lb-place").textContent = p.caption ? p.place || "" : ""; $("lb-by").textContent = p.addedBy ? `Added by ${p.addedBy}` : "";
   $("lb-count").textContent = `${lbIndex + 1} of ${photos.length}`;
+  renderReactions(p);
   const fig = $("lb-figure"); fig.style.animation = "none"; void fig.offsetWidth; fig.style.animation = "";
   const lb = $("lightbox");
   if (lb.hidden) { lastFocus = document.activeElement; lb.hidden = false; $("lb-next").focus(); }
+  fitLightbox();
   markPhotoViewed(lbIndex);
   holdRotation(0);
   if ($("collage").hidden) flyToPhoto(lbIndex, 0.48);
 }
+// Size the photo to the room that's actually left, so the ✕, caption, reactions and ‹ › row always fit.
+// CSS can't: vh on a phone is the height with the browser's toolbars hidden, and the caption wraps.
+// The polaroid narrows to the photo's shape. Measured twice, since a narrower polaroid can wrap the caption.
+const POLAROID_PAD = 14;
+function fitLightbox() {
+  const lb = $("lightbox");
+  if (lbIndex < 0 || lb.hidden) return;
+  const p = photos[lbIndex], fig = $("lb-figure"), img = $("lb-img"), vid = $("lb-video");
+  const cs = getComputedStyle(lb), px = (v) => parseFloat(v) || 0;
+  const side = px(getComputedStyle(fig).paddingLeft) || POLAROID_PAD;
+  // A phone on its side lays the place, reactions and arrows beside the photo instead of under it (style.css).
+  const beside = cs.flexDirection === "row", meta = document.querySelector(".lb-meta");
+  const roomW = Math.min(600, lb.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight) - (beside ? meta.offsetWidth + px(cs.columnGap) : 0)) - side * 2;
+  const roomH = lb.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom) - (beside ? 0 : px(cs.rowGap));
+  const ratio = p.w > 0 && p.h > 0 ? p.w / p.h : img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 4 / 3;
+  fig.classList.add("fitted");
+  for (let pass = 0; pass < 2; pass++) {
+    const chrome = side + fig.querySelector("figcaption").offsetHeight + (beside ? 0 : meta.offsetHeight);
+    const h = Math.max(120, Math.min(620, roomH - chrome));
+    const w = Math.max(Math.min(roomW, 240), Math.min(roomW, h * ratio));   // never so narrow the caption has no room
+    fig.style.width = `${w + side * 2}px`;
+    img.style.height = vid.style.height = `${Math.round(Math.min(h, w / ratio))}px`;
+  }
+}
+$("lb-img").addEventListener("load", fitLightbox);   // a sample photo's shape is only known once it loads
+
+// ---------------------------------------------------------------------------------------------
+// Emoji reactions under the lightbox photo: tap one to add it, tap again to take it back. Counts are
+// anonymous; this browser remembers its own taps. The API says which emoji are on (none when the
+// family turns reactions off, or for the sample photos), and the row stays hidden without them.
+// ---------------------------------------------------------------------------------------------
+let reactionKeys = [];
+const reacted = createReactionMemory(), reactBusy = new Set();
+function buildReactions(keys) {
+  reactionKeys = keys;
+  const row = $("lb-react"); row.replaceChildren();
+  for (const k of keys) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "react"; b.dataset.key = k;
+    const e = document.createElement("span"); e.className = "e"; e.textContent = REACTION_EMOJI[k]; e.setAttribute("aria-hidden", "true");
+    const n = document.createElement("span"); n.className = "n"; n.setAttribute("aria-hidden", "true");
+    b.append(e, n);
+    b.addEventListener("click", () => toggleReaction(k));
+    b.addEventListener("animationend", () => b.classList.remove("pop"));
+    row.append(b);
+  }
+}
+function renderReactions(p, pop = null) {
+  const row = $("lb-react");
+  row.hidden = !reactionKeys.length;
+  if (row.hidden) return;
+  for (const b of row.children) {
+    const k = b.dataset.key, n = p.reactions?.[k] ?? 0, mine = reacted.has(p.id, k);
+    b.querySelector(".n").textContent = n ? String(n) : "";
+    b.setAttribute("aria-pressed", String(mine));
+    b.setAttribute("aria-label", `${REACTION_NAMES[k]}${n ? `, ${n}` : ""}`);
+    if (k === pop) { b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); }
+  }
+}
+async function toggleReaction(k) {
+  const p = photos[lbIndex], busy = `${p?.id}#${k}`;
+  if (!p || reactBusy.has(busy)) return;
+  const on = !reacted.has(p.id, k), before = p.reactions ?? {};
+  reactBusy.add(busy);
+  // Show it at once; the API's counts replace the guess, and a failure puts it back.
+  reacted.set(p.id, k, on);
+  p.reactions = { ...before, [k]: Math.max(0, (before[k] ?? 0) + (on ? 1 : -1)) };
+  renderReactions(p, on ? k : null); fitLightbox();
+  try {
+    p.reactions = await postReaction({ pickId: p.id, emoji: k, on, to: TO });
+  } catch (e) {
+    console.warn("Reaction not saved:", e.message);
+    reacted.set(p.id, k, !on); p.reactions = before;
+  } finally {
+    reactBusy.delete(busy);
+    if (photos[lbIndex] === p) { renderReactions(p); fitLightbox(); }
+  }
+}
+
 /** Stops the lightbox video and drops its download, so a closed or skipped video stops using data. */
 function stopVideo() {
   const v = $("lb-video");
@@ -739,6 +819,7 @@ function resize() {
     place(v.targetY, v.radius, v.polar, v.azim);
   }
   stripFade($("months")); stripFade($("tools"));
+  fitLightbox();
 }
 addEventListener("resize", resize);
 
@@ -777,6 +858,7 @@ async function loadYear(paintedPhotos, paintedCard) {
     photos: list.length ? list : paintedPhotos,
     card: { front: front || paintedCard.front, back: back || paintedCard.back },
     label: previewLabel({ realPhotos: list.length > 0, realFront: !!front, realBack: !!back }),
+    reactions: list.length ? reactionsFromApi(data?.reactions) : [],   // the sample photos can't be reacted to
   };
 }
 
@@ -796,6 +878,7 @@ async function loadYear(paintedPhotos, paintedCard) {
   else if (TO && storedName() === null) hello = openHello();   // a code we don't know: ask, like everyone else
   await hello;
   photoHistory = createPhotoHistory(year.picks);
+  buildReactions(year.reactions);
   setPhotos(year.photos);
   requestAnimationFrame(frame);
   $("loading").classList.add("gone");

@@ -10,6 +10,8 @@
 //   in seconds. Its url/thumb are a still frame, so the tree and collage treat it like any photo.
 // - card.cardFront / card.cardBack: the printed card's images, { url, w, h } or null. The family
 //   sets them from the app's "Your card" screen.
+// - reactions: the emoji keys visitors can tap under a photo (["heart", …]), or null when the family
+//   has turned them off. Each photo then carries its counts, { heart: 3 }. POST /reactions adds one.
 // Until real picks or card images exist, the page shows its painted samples and says so.
 
 // Not a secret: the page has to call it, and the admin routes need the family key.
@@ -73,6 +75,7 @@ export function photosFromApi(list) {
       addedBy: text(p.addedBy),
       video: p.type === 'video' && httpsUrl(p.video) ? p.video : null,
       duration: p.type === 'video' && Number.isFinite(p.duration) && p.duration > 0 ? p.duration : null,
+      reactions: reactionCountsFromApi(p.reactions),
     }))
     .map((p, i) => ({ p, i, day: dayOf(p.takenAt) }))
     .sort((a, b) => (a.day && b.day ? a.day - b.day || a.i - b.i : a.day ? -1 : b.day ? 1 : a.i - b.i))
@@ -155,4 +158,59 @@ export function previewLabel({ realPhotos, realFront, realBack }) {
   if (realPhotos && !sampleCard) return null
   if (!realPhotos && sampleCard) return 'Preview · sample card & photos'
   return realPhotos ? 'Preview · sample card' : 'Preview · sample photos'
+}
+
+// ---------------------------------------------------------------------------------------------
+// Emoji reactions: tap one under a photo, see how many people did. Anonymous counts, no comments.
+// Keep the keys in step with REACTIONS in the merryroll API (api/src/lib.mjs).
+// ---------------------------------------------------------------------------------------------
+export const REACTION_EMOJI = Object.freeze({ heart: '❤️', laugh: '😂', love: '😍', aww: '🥹', clap: '👏', tree: '🎄' })
+export const REACTION_NAMES = Object.freeze({ heart: 'Heart', laugh: 'Laughing', love: 'Heart eyes', aww: 'Aww', clap: 'Clapping', tree: 'Christmas tree' })
+
+/**
+ * The emoji the page offers, in the API's order. Empty when the family has turned reactions off
+ * (null) or the API predates them (missing), so the row simply doesn't appear.
+ */
+export function reactionsFromApi(list) {
+  if (!Array.isArray(list)) return []
+  return [...new Set(list.filter((k) => typeof k === 'string' && Object.hasOwn(REACTION_EMOJI, k)))]
+}
+
+/** One photo's counts, `{ heart: 3 }`: known emoji with whole counts above zero only. */
+export function reactionCountsFromApi(r) {
+  const out = {}
+  if (!r || typeof r !== 'object') return out
+  for (const k of Object.keys(REACTION_EMOJI)) if (Number.isInteger(r[k]) && r[k] > 0) out[k] = r[k]
+  return out
+}
+
+const REACTED_KEY = `xmas${YEAR % 100}-reactions-v1`
+
+/** Which emoji this browser has tapped on each photo, so a second tap takes it back. */
+export function createReactionMemory(getStorage = () => globalThis.localStorage) {
+  let mine = {}
+  try {
+    const stored = JSON.parse(getStorage()?.getItem(REACTED_KEY) ?? 'null')
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) mine = stored
+  } catch { /* Unavailable or invalid: start fresh. */ }
+  const list = (id) => (Array.isArray(mine[id]) ? mine[id] : [])
+  return {
+    has: (id, key) => list(id).includes(key),
+    set(id, key, on) {
+      const keys = new Set(list(id))
+      if (on) keys.add(key); else keys.delete(key)
+      if (keys.size) mine[id] = [...keys]; else delete mine[id]
+      try { getStorage()?.setItem(REACTED_KEY, JSON.stringify(mine)) } catch { /* Remembered for this visit only. */ }
+    },
+  }
+}
+
+/** Adds (on) or takes back (off) one emoji on a photo. Resolves to that photo's counts from the API. */
+export async function postReaction({ pickId, emoji, on, to = null, base = API_BASE, fetchImpl = fetch }) {
+  const res = await fetchImpl(`${base}/reactions`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ pickId, emoji, on, ...(to ? { to } : {}) }),
+  })
+  if (!res.ok) throw new Error(`POST /reactions ${res.status}`)
+  return reactionCountsFromApi((await res.json())?.reactions)
 }

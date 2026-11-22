@@ -1,7 +1,7 @@
 // node --test src/xmas26/data.test.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText } from './data.js'
+import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, reactionCountsFromApi, createReactionMemory, postReaction } from './data.js'
 
 test('dayOf keeps the calendar day the photo was taken, in its own time zone', () => {
   const d = dayOf('2026-07-12T23:30:00-10:00')
@@ -144,4 +144,52 @@ test('durationText', () => {
   assert.equal(durationText(7.4), '0:07')
   assert.equal(durationText(29.97), '0:30')
   assert.equal(durationText(undefined), '0:00')
+})
+
+test('reactionsFromApi: known emoji in order, nothing when off or missing', () => {
+  assert.deepEqual(reactionsFromApi(['heart', 'laugh', 'heart', 'nope', 'toString', 3]), ['heart', 'laugh'])
+  assert.deepEqual(reactionsFromApi(null), [])
+  assert.deepEqual(reactionsFromApi(undefined), [])
+})
+
+test('photosFromApi keeps tidy reaction counts', () => {
+  const [p, q] = photosFromApi([
+    { id: 'p_a', url: 'https://cdn/a.jpg', takenAt: '2026-01-01', reactions: { heart: 3, laugh: 0, tree: 1.5, nope: 9, clap: -2 } },
+    { id: 'p_b', url: 'https://cdn/b.jpg', takenAt: '2026-02-01' },
+  ])
+  assert.deepEqual(p.reactions, { heart: 3 })
+  assert.deepEqual(q.reactions, {})
+  assert.deepEqual(reactionCountsFromApi('junk'), {})
+})
+
+test('createReactionMemory remembers taps per photo and survives broken storage', () => {
+  const store = new Map()
+  const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }
+  const a = createReactionMemory(() => storage)
+  a.set('p_a', 'heart', true); a.set('p_a', 'tree', true); a.set('p_a', 'tree', false)
+  const b = createReactionMemory(() => storage)
+  assert.equal(b.has('p_a', 'heart'), true)
+  assert.equal(b.has('p_a', 'tree'), false)
+  assert.equal(b.has('p_b', 'heart'), false)
+  b.set('p_a', 'heart', false)
+  assert.equal(createReactionMemory(() => storage).has('p_a', 'heart'), false)
+
+  const broken = { getItem: () => { throw new Error('blocked') }, setItem: () => { throw new Error('blocked') } }
+  const c = createReactionMemory(() => broken)
+  c.set('p_a', 'heart', true)
+  assert.equal(c.has('p_a', 'heart'), true)
+  store.set('xmas26-reactions-v1', '[1,2]')
+  assert.equal(createReactionMemory(() => storage).has('p_a', 'heart'), false)
+})
+
+test('postReaction sends the tap and returns the photo\'s counts', async () => {
+  let sent
+  const fetchImpl = async (url, init) => { sent = { url, ...init }; return { ok: true, json: async () => ({ reactions: { heart: 4, nope: 1 } }) } }
+  const counts = await postReaction({ pickId: 'p_a', emoji: 'heart', on: true, to: 'auntie', base: 'https://api', fetchImpl })
+  assert.deepEqual(counts, { heart: 4 })
+  assert.equal(sent.url, 'https://api/reactions')
+  assert.deepEqual(JSON.parse(sent.body), { pickId: 'p_a', emoji: 'heart', on: true, to: 'auntie' })
+  await postReaction({ pickId: 'p_a', emoji: 'heart', on: false, base: 'https://api', fetchImpl })
+  assert.deepEqual(JSON.parse(sent.body), { pickId: 'p_a', emoji: 'heart', on: false })
+  await assert.rejects(postReaction({ pickId: 'p_a', emoji: 'heart', on: true, fetchImpl: async () => ({ ok: false, status: 403 }) }), /403/)
 })
