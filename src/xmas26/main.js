@@ -72,7 +72,8 @@ scene.fog = new THREE.FogExp2(0x08130f, 0.032);
 const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false;
-controls.minDistance = 1.6; controls.maxDistance = 16; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.85;
+const TREE_MIN_DIST = 1.6;
+controls.minDistance = TREE_MIN_DIST; controls.maxDistance = 16; controls.minPolarAngle = 0.5; controls.maxPolarAngle = 1.85;
 controls.autoRotateSpeed = 0.55;
 
 scene.add(new THREE.AmbientLight(0xfff1dc, 0.85));
@@ -271,7 +272,7 @@ function flyToPhoto(i, closeness = 0.5) {
 let idleTimer = 0;
 function holdRotation(ms = 7000) {
   controls.autoRotate = false; clearTimeout(idleTimer);
-  if (ms > 0 && !REDUCE) idleTimer = setTimeout(() => { if (!overlayOpen()) controls.autoRotate = true; }, ms);
+  if (ms > 0 && !REDUCE) idleTimer = setTimeout(() => { if (!overlayOpen() && !cardMode) controls.autoRotate = true; }, ms);
 }
 controls.addEventListener("start", () => holdRotation());
 const overlayOpen = () => !$("lightbox").hidden || !$("collage").hidden;
@@ -337,7 +338,7 @@ canvas.addEventListener("pointerup", (ev) => {
   down = null;
   const o = hit(ev.clientX, ev.clientY);
   if (!o) return;
-  if (o.userData.card) showCard(); else openLightbox(o.userData.index);
+  if (o.userData.card) cardMode && cardZoomed() ? fitCard() : showCard(); else openLightbox(o.userData.index);
 });
 canvas.addEventListener("pointermove", (ev) => {
   if (ev.pointerType !== "mouse") return;
@@ -594,7 +595,7 @@ $("collage-close").addEventListener("click", () => { $("collage").hidden = true;
 // screen, facing whichever side is nearer the current view (showCard overrides that with the front).
 function cardView() {
   const { w, h } = cardMesh.userData, aspect = innerWidth / innerHeight, c = current();
-  const radius = Math.max((w / 2) / (tanHalf() * aspect * 0.92), (h / 2) / (tanHalf() * 0.74), controls.minDistance);
+  const radius = Math.max((w / 2) / (tanHalf() * aspect * 0.92), (h / 2) / (tanHalf() * 0.74), TREE_MIN_DIST);
   const off = (a) => Math.abs(((((a - c.azim + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI);
   const front = card.rotation.y, azim = off(front) <= off(front + Math.PI) ? front : front + Math.PI;
   return { targetY: card.userData.baseY, radius, polar: 1.53, azim };
@@ -607,21 +608,67 @@ function setCardMode(on) {
   cardMode = on;
   $("btn-flip-label").textContent = on ? "Flip it" : "See our card";
   $("btn-tree").hidden = !on;
+  // Zooming in on the card: pinch or scroll toward a spot, and pan once zoomed (cardGestures).
+  controls.enablePan = on; controls.zoomToCursor = on;
+  controls.minDistance = on ? cardView().radius / CARD_ZOOM : TREE_MIN_DIST;
+  if (on && card) card.position.y = card.userData.baseY;   // hold still to be read, no bobbing
+  cardGestures();
   stripFade($("tools"));
 }
-// The first tap flies in to the card's front; once there, each tap flips it.
+// The first tap flies in to the card's front; once there, each tap flips it (fitting it back first if zoomed in).
 async function showCard() {
   if (!introDone) finishIntro();
   holdRotation(0);
-  if (cardMode) { flipCard(); return; }
+  if (cardMode) { if (cardZoomed()) await fitCard(); flipCard(); return; }
   setCardMode(true);
   await flyTo({ ...cardView(), azim: card.rotation.y }, 0.9);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Zooming in on the card, in card view only: pinch (or scroll) toward a spot, up to CARD_ZOOM× the
+// fitted size. The 2026 front is 1389 px wide, sharp to about 2× on a phone; past that it softens. Zoomed in, one finger (or the
+// mouse) slides over the card instead of turning it, and can't slide past its edges; a tap fits it
+// back. The tree keeps its own limits, so this never changes how the tree turns.
+// ---------------------------------------------------------------------------------------------
+const CARD_ZOOM = 3;
+const FINE_POINTER = matchMedia("(pointer: fine)").matches;
+const HINT = document.querySelector(".mast .hint").textContent;
+const cardZoomed = () => cardMode && current().radius < cardView().radius * 0.92;
+function fitCard() { holdRotation(0); return flyTo(cardView(), 0.5); }
+let zoomedBefore = null;
+function cardGestures() {
+  const zoomed = cardZoomed();
+  if (zoomed === zoomedBefore && cardMode) return;
+  zoomedBefore = zoomed;
+  controls.touches.ONE = zoomed ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  controls.mouseButtons.LEFT = zoomed ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  document.querySelector(".mast .hint").textContent = !cardMode ? HINT
+    : zoomed ? `Drag to look around. ${FINE_POINTER ? "Click" : "Tap"} to fit it back.`
+    : FINE_POINTER ? "Scroll to zoom in. Click the card to flip it." : "Pinch to zoom in. Tap the card to flip it.";
+}
+const cardRight = new THREE.Vector3(), shift = new THREE.Vector3();
+/**
+ * Keeps the card filling the screen like a photo viewer: a pan stops where the card's edge meets the
+ * screen's edge, and zooming back out slides it back to the middle.
+ */
+function keepOnCard() {
+  if (!cardMode || flying || !cardMesh) return;
+  const { w, h } = cardMesh.userData, ry = card.rotation.y, t = controls.target;
+  const halfH = current().radius * tanHalf(), halfW = halfH * camera.aspect;   // the part of the card on screen
+  const roomU = Math.max(0, w / 2 - halfW), roomV = Math.max(0, h / 2 - halfH);
+  cardRight.set(Math.cos(ry), 0, -Math.sin(ry));
+  const u = t.x * cardRight.x + t.z * cardRight.z, v = t.y - card.userData.baseY;   // the card is centred on the y axis
+  const du = THREE.MathUtils.clamp(u, -roomU, roomU) - u, dv = THREE.MathUtils.clamp(v, -roomV, roomV) - v;
+  if (!du && !dv) return;
+  shift.copy(cardRight).multiplyScalar(du); shift.y += dv;
+  t.add(shift); camera.position.add(shift);
+}
+controls.addEventListener("change", () => { if (cardMode) { keepOnCard(); cardGestures(); } });
 function leaveCard() { setCardMode(false); flyHome(); holdRotation(3000); }
 $("btn-flip").addEventListener("click", showCard);
 $("btn-tree").addEventListener("click", leaveCard);
-// Pinching or dragging well away from the card counts as leaving it.
-controls.addEventListener("end", () => { if (cardMode && Math.abs(current().radius - cardView().radius) > 1) { setCardMode(false); holdRotation(); } });
+// Pinching well out from the card counts as leaving it. Zooming in doesn't: that's reading it.
+controls.addEventListener("end", () => { if (cardMode && current().radius > cardView().radius + 1) { setCardMode(false); holdRotation(); } });
 $("btn-replay").addEventListener("click", () => { setCardMode(false); activeMonth = -1; monthLit.clear(); buildMonths(); startIntro(); });
 
 // The months and (on a phone) the tools scroll sideways; fade the edge that has more to show.
@@ -830,7 +877,7 @@ function frame(now) {
   updateIntro(e);
   animateLights(t, e);
   animatePolaroids(t);
-  if (card && !flipping && !REDUCE) card.position.y = card.userData.baseY + Math.sin(t * 0.9) * 0.025;
+  if (card && !flipping && !REDUCE && !cardMode) card.position.y = card.userData.baseY + Math.sin(t * 0.9) * 0.025;
   if (!flying) controls.update();
   renderer.render(scene, camera);
   drawSnow(t);

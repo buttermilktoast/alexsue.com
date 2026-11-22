@@ -123,6 +123,10 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   see anonymous counts; `POST /reactions` adds or takes one back, and localStorage remembers this
   browser's taps. The row shows only when `GET /card` lists `reactions` (`null` = the family turned
   them off with `reactions: false` in the card JSON; an older API sends nothing) and never on the samples.
+- **Card view zoom:** in card view (only), pinch or scroll zooms toward the fingers/cursor up to
+  `CARD_ZOOM`× the fitted size; zoomed in, a drag pans and stops at the card's edges (`keepOnCard`),
+  and a tap fits it back. The tree's own limits (`TREE_MIN_DIST`, no pan) come back on leaving.
+  Card view holds still: no auto-rotate, no bobbing.
 - **Lightbox sizing:** `fitLightbox` in `main.js` measures the caption, place, reactions and ‹ › row and
   gives the photo what's left. Don't go back to a `vh` max-height: on iOS, `vh` is the height with
   Safari's toolbars hidden, which pushed the ✕ and the arrows off a phone screen. A phone on its side
