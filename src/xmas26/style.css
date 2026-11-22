@@ -66,6 +66,15 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   background: var(--glass);
 }
 
+/* The deployed commit: a quiet corner stamp, clear of the masthead and the dock. */
+.version {
+  position: absolute; z-index: 3; margin: 0; pointer-events: none;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  right: max(16px, env(safe-area-inset-right, 0px));
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.68rem; letter-spacing: 0.02em;
+  color: var(--muted); opacity: 0.6;
+}
+
 /* ---- Dock: months + tools ---- */
 .dock {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; pointer-events: none;
@@ -256,7 +265,7 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 /* Phone: the tree is the page. A one-line masthead and a one-row dock give it the screen. */
 @media (max-width: 640px) {
   .mast { top: calc(env(safe-area-inset-top, 0px) + 12px); left: max(16px, env(safe-area-inset-left, 0px)); max-width: calc(100% - 32px); }
-  .eyebrow { font-size: 1.45rem; }
+  .eyebrow { font-size: 1.45rem; padding-right: 7rem; } /* room for .version: a long name wraps rather than runs into it */
   .mast h1 { font-size: 1.6rem; text-wrap: nowrap; }
   .mast h1 .year { display: inline; font-size: 1em; line-height: 1; letter-spacing: 0; color: var(--ember); }
   .lede { display: none; }

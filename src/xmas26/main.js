@@ -15,6 +15,10 @@ initAnalytics(TO ? { pageLocation: withoutCode(location.href) } : {});
 
 const REDUCE = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
+// The deployed commit, as on the dashboard's footer (VITE_GIT_COMMIT from the deploy workflow).
+const COMMIT = import.meta.env.VITE_GIT_COMMIT || "development";
+$("version").textContent = `version ${COMMIT === "development" ? COMMIT : COMMIT.slice(0, 7)}`;
+$("version").title = COMMIT;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
