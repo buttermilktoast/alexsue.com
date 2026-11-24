@@ -123,7 +123,9 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   family-safe, mostly faces, nothing past Emoji 14) and see anonymous counts. Built for phones: the row is
   always one line, the six `QUICK_REACTIONS` and a "more" chip that opens a bottom sheet with the rest.
   Counts are corner badges so a chip never widens, and once picker emoji are used on a photo the chip
-  shows the top two and their total (`moreSummary`) instead of growing the row; `POST /reactions` adds or takes one back, and localStorage remembers this
+  shows the top two and their total (`moreSummary`) instead of growing the row. Above the row, "Tap to react ·
+  no one will know it's you" shows until this browser's first reaction (`createReactionMemory().any()`);
+  "Added by" is commented out (index.html and main.js) to leave it the room; `POST /reactions` adds or takes one back, and localStorage remembers this
   browser's taps. The row shows only when `GET /card` lists `reactions` (`null` = the family turned
   them off with `reactions: false` in the card JSON; an older API sends nothing) and never on the samples.
 - **Tree zoom and move:** pinch/scroll zooms toward the fingers/cursor, and a two-finger drag

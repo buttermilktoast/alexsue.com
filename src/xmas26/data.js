@@ -228,6 +228,8 @@ export function createReactionMemory(getStorage = () => globalThis.localStorage)
   const list = (id) => (Array.isArray(mine[id]) ? mine[id] : [])
   return {
     has: (id, key) => list(id).includes(key),
+    /** Whether this browser has a reaction on any photo: the "Tap to react" line goes once it has. */
+    any: () => Object.values(mine).some((keys) => Array.isArray(keys) && keys.length > 0),
     set(id, key, on) {
       const keys = new Set(list(id))
       if (on) keys.add(key); else keys.delete(key)

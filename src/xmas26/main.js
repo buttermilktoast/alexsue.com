@@ -444,7 +444,8 @@ function openLightbox(i, dir = 0) {
   [1, -1].forEach((d) => preloadFull(photos[(lbIndex + d + photos.length) % photos.length]));
   // The caption is hand-written on the polaroid and the place goes underneath; with no caption, the place takes its spot.
   $("lb-caption").textContent = p.caption || p.place || ""; $("lb-date").textContent = fmtDate(p);
-  $("lb-place").textContent = p.caption ? p.place || "" : ""; $("lb-by").textContent = p.addedBy ? `Added by ${p.addedBy}` : "";
+  $("lb-place").textContent = p.caption ? p.place || "" : "";
+  // $("lb-by").textContent = p.addedBy ? `Added by ${p.addedBy}` : "";   // off for now, with #lb-by in index.html
   $("lb-count").textContent = `${lbIndex + 1} of ${photos.length}`;
   renderReactions(p);
   // The next photo slides in from the side it's on, so a swipe and the arrows tell the same story.
@@ -530,6 +531,8 @@ function showCounts(b, p) {
 function renderReactions(p, pop = null) {
   const row = $("lb-react");
   row.hidden = !reactionKeys.length;
+  // Says tapping is welcome and anonymous, until this browser's first reaction shows it knows.
+  $("lb-react-hint").hidden = row.hidden || reacted.any();
   if (row.hidden) return;
   for (const b of row.querySelectorAll(".react[data-key]")) { showCounts(b, p); if (b.dataset.key === pop) restartPop(b); }
   const more = $("react-more");

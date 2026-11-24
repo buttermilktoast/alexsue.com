@@ -181,6 +181,17 @@ test('photosFromApi keeps tidy reaction counts', () => {
   assert.deepEqual(reactionCountsFromApi('junk'), {})
 })
 
+test('createReactionMemory.any: false until this browser reacts, true while it has one', () => {
+  const store = new Map(), storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }
+  const m = createReactionMemory(() => storage)
+  assert.equal(m.any(), false)
+  m.set('p_a', 'heart', true)
+  assert.equal(m.any(), true)
+  assert.equal(createReactionMemory(() => storage).any(), true)   // remembered on the next visit
+  m.set('p_a', 'heart', false)
+  assert.equal(m.any(), false)
+})
+
 test('createReactionMemory remembers taps per photo and survives broken storage', () => {
   const store = new Map()
   const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) }

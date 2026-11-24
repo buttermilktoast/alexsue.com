@@ -187,6 +187,8 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 /* Emoji reactions: tap one, tap it again to take it back. The count shows once anyone has. */
 /* Each count is a badge on the chip's corner rather than text beside the emoji, so a chip is the same width at
    0 taps as at 120 and the row still fits one line on a 360px phone with every count showing. */
+.lb-react-hint { margin-top: 6px !important; color: var(--muted); font-size: 0.8rem; }
+.lb-react-hint + .lb-react { margin-top: 6px; }
 .lb-react { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
 .react {
   position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; height: 40px; padding: 0 11px;
@@ -377,7 +379,9 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
     padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     padding-right: max(68px, calc(env(safe-area-inset-right, 0px) + 60px)); /* clear of the ✕ */
   }
-  .lb-meta { width: min(300px, 40%); align-self: stretch; align-content: end; }
+  .lb-meta { width: min(320px, 42%); align-self: stretch; align-content: end; }
+  .lb-react { gap: 5px; }
+  .react { min-width: 38px; height: 38px; padding: 0 6px; gap: 3px; } /* the six and "more" on one line beside the photo */
 }
 @media (prefers-reduced-motion: reduce) {
   .lb-polaroid { animation: none; }
