@@ -58,7 +58,11 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   text-shadow: 0 0 28px rgba(243, 182, 91, 0.28);
 }
 .lede { margin: 0.7rem 0 0; color: var(--muted); font-size: 0.95rem; line-height: 1.45; max-width: 34ch; }
-.hint { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.8rem; letter-spacing: 0.02em; }
+.hint { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.8rem; letter-spacing: 0.02em; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85); transition: opacity 0.4s ease; }
+.hint.quiet { opacity: 0; }
+/* What the gold dot on a polaroid means: the same dot, then the words. */
+.new-hint { display: flex; align-items: center; gap: 0.45em; }
+.new-hint .dot { flex: none; width: 0.95em; height: 0.95em; border-radius: 50%; background: var(--ember); border: 2px solid var(--pen); box-shadow: 0 0 0 1px rgba(243, 236, 223, 0.35); }
 
 .draft {
   display: inline-block; margin: 0.6rem 0 0; padding: 0.3rem 0.65rem; border: 1px dashed var(--line); border-radius: 999px;
@@ -139,13 +143,29 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px; padding-block: calc(env(safe-area-inset-top, 0px) + 62px) calc(env(safe-area-inset-bottom, 0px) + 20px); /* 62: the tilted polaroid's corner clears the ✕ */
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  background: rgba(5, 12, 10, 0.66); backdrop-filter: blur(5px);
+  /* --pull: 0..1 as a photo is dragged down to close; the backdrop and buttons fade with it. */
+  background-color: rgba(5, 12, 10, calc(0.66 * (1 - var(--pull, 0)))); backdrop-filter: blur(5px);
+  touch-action: none; -webkit-user-select: none; user-select: none; /* main.js handles every gesture here */
 }
+.lightbox .lb-meta, .lightbox .lb-close { opacity: calc(1 - var(--pull, 0)); }
+.lightbox.settling, .lightbox.settling .lb-meta, .lightbox.settling .lb-close { transition: background-color 0.24s ease, opacity 0.24s ease; }
+/* The photo zooms inside its polaroid, never over the caption. */
+.lb-photo { overflow: hidden; }
+.lb-photo img { transform-origin: center; -webkit-user-drag: none; }
+.lightbox.zoomed .lb-photo { cursor: grab; }
+.lightbox.zoomed .lb-photo:active { cursor: grabbing; }
+/* "Back to the first photo": said once, when the arrows or a swipe go round the end. */
+.lb-note {
+  position: absolute; z-index: 1; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 18px); transform: translateX(-50%);
+  margin: 0; padding: 0.4rem 0.9rem; border: 1px solid var(--line); border-radius: 999px; background: var(--glass);
+  font-size: 0.85rem; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
+}
+.lb-note.show { opacity: 1; }
 /* The photo floats in whatever room the meta leaves, and the meta keeps still at the bottom (or, on a phone
    on its side, at the right), so the reactions and arrows don't jump as a tall photo follows a wide one. */
 .lb-polaroid {
   margin: auto; background: var(--paper); padding: 14px 14px 0; width: min(600px, 100%);
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55); transform: rotate(-1.2deg); touch-action: pan-y;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55); transform: rotate(-1.2deg);
   animation: lb-in 0.45s cubic-bezier(.2, .8, .2, 1);
 }
 @keyframes lb-in { from { opacity: 0; transform: translateY(18px) rotate(-3deg) scale(.96); } }
@@ -265,12 +285,14 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   pointer-events: auto; padding: 0; border: 0; background: none; cursor: pointer;
   font: inherit; color: inherit; overflow-wrap: anywhere; text-align: left;
 }
+/* A dotted underline says the name is a button (to change it, or to read the note again); there's no hover on a phone. */
+.who:not(:disabled) { text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .who:disabled { cursor: default; }
 .who:disabled:hover { text-decoration: none; }
 /* The family's note to the person a personal link is for. */
 .sheet .note-msg { color: var(--ink); font-size: 1.02rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; max-height: 46vh; overflow-y: auto; }
 .sheet.note h2.wl-eyebrow { font-weight: 400; margin-bottom: 0; overflow-wrap: anywhere; }
-.who:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.who:hover { text-decoration: underline solid; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 
 /* Scrolling strips (months; the tools on a phone) fade at whichever edge has more to show. */
 .months.more-r, .tools.more-r { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }

@@ -346,10 +346,26 @@ canvas.addEventListener("pointerdown", (ev) => {
 canvas.addEventListener("pointerup", (ev) => {
   if (!down || Math.hypot(ev.clientX - down.x, ev.clientY - down.y) > 7 || performance.now() - down.t > 500) return;
   down = null;
-  const o = hit(ev.clientX, ev.clientY);
+  const o = hit(ev.clientX, ev.clientY) ?? (ev.pointerType !== "mouse" && !cardMode ? nearestPhoto(ev.clientX, ev.clientY) : null);
   if (!o) return;
   if (o.userData.card) cardMode && cardZoomed() ? fitCard() : showCard(); else openLightbox(o.userData.index);
 });
+// A fingertip is wider than a polaroid on a full tree: a tap that just misses one, on the side of
+// the tree facing us, opens the nearest.
+const toCam = new THREE.Vector3(), onScreen = new THREE.Vector3();
+function nearestPhoto(x, y, reach = 28) {
+  const b = canvas.getBoundingClientRect();
+  let best = null, bestD = reach;
+  for (const { mesh } of pols) {
+    if (!mesh.visible) continue;
+    toCam.copy(camera.position).sub(mesh.position);
+    if (toCam.x * mesh.position.x + toCam.z * mesh.position.z <= 0) continue;   // the far side of the tree
+    onScreen.copy(mesh.position).project(camera);
+    const d = Math.hypot(b.left + ((onScreen.x + 1) / 2) * b.width - x, b.top + ((1 - onScreen.y) / 2) * b.height - y);
+    if (d < bestD) { bestD = d; best = mesh; }
+  }
+  return best;
+}
 canvas.addEventListener("pointermove", (ev) => {
   if (ev.pointerType !== "mouse") return;
   const o = hit(ev.clientX, ev.clientY);
@@ -386,9 +402,10 @@ function selectMonth(i) {
   if (!introDone) finishIntro();
   setCardMode(false);
   const buttons = [...$("months").children];
-  if (activeMonth === i) { activeMonth = -1; monthLit.clear(); buttons.forEach((b) => b.setAttribute("aria-pressed", "false")); flyHome(); holdRotation(); return; }
+  if (activeMonth === i) { activeMonth = -1; monthLit.clear(); buttons.forEach((b) => b.setAttribute("aria-pressed", "false")); updateHint(); flyHome(); holdRotation(); return; }
   activeMonth = i; buttons.forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
   monthLit = new Set(pols.map((p, k) => (dateOf(p.photo).getMonth() === i ? k : -1)).filter((k) => k >= 0));
+  updateHint();
   const first = [...monthLit][0];
   holdRotation(12000);
   if (first !== undefined) flyToPhoto(first, 0.62);
@@ -401,9 +418,13 @@ function preloadFull(p) {
   if (!fullLoads.has(u)) { const i = new Image(); i.src = u; fullLoads.set(u, i.decode().then(() => u, () => null)); }
   return fullLoads.get(u);
 }
-function openLightbox(i) {
+// dir: +1 for the next photo (it comes in from the right), -1 for the previous one, 0 to open one.
+function openLightbox(i, dir = 0) {
   if (!introDone) finishIntro();
   setCardMode(false);
+  // Going past either end goes round to the other: say so, or it looks like the year started over.
+  if (!$("lightbox").hidden && photos.length > 1 && (i < 0 || i >= photos.length)) flashNote(i < 0 ? "Round to the last photo" : "Back to the first photo");
+  resetPhotoGesture();
   lbIndex = (i + photos.length) % photos.length;
   const p = photos[lbIndex];
   // Show the thumbnail the tree already loaded so the photo changes with its caption, then swap in the
@@ -425,11 +446,15 @@ function openLightbox(i) {
   $("lb-place").textContent = p.caption ? p.place || "" : ""; $("lb-by").textContent = p.addedBy ? `Added by ${p.addedBy}` : "";
   $("lb-count").textContent = `${lbIndex + 1} of ${photos.length}`;
   renderReactions(p);
-  const fig = $("lb-figure"); fig.style.animation = "none"; void fig.offsetWidth; fig.style.animation = "";
+  // The next photo slides in from the side it's on, so a swipe and the arrows tell the same story.
+  const fig = $("lb-figure"); fig.style.animation = "none";
+  if (dir && !REDUCE) fig.animate([{ transform: `translateX(${dir * 45}%) rotate(${-1.2 + dir * 4}deg)`, opacity: 0 }, { transform: BASE_TILT, opacity: 1 }], { duration: 340, easing: "cubic-bezier(.2, .8, .2, 1)" });
+  else { void fig.offsetWidth; fig.style.animation = ""; }
   const lb = $("lightbox");
   if (lb.hidden) { lastFocus = document.activeElement; lb.hidden = false; $("lb-next").focus(); }
   fitLightbox();
   markPhotoViewed(lbIndex);
+  hintLearned = true; updateHint();   // they've found the photos; the tree's how-to can go
   holdRotation(0);
   if ($("collage").hidden) flyToPhoto(lbIndex, 0.48);
 }
@@ -456,6 +481,7 @@ function fitLightbox() {
     fig.style.width = `${w + side * 2}px`;
     img.style.height = vid.style.height = `${Math.round(Math.min(h, w / ratio))}px`;
   }
+  if (zoom.s > 1) setZoom(zoom.s, zoom.x, zoom.y);   // the box changed size: keep a zoomed photo covering it
 }
 $("lb-img").addEventListener("load", fitLightbox);   // a sample photo's shape is only known once it loads
 
@@ -520,21 +546,176 @@ function stopVideo() {
 }
 function closeLightbox() {
   stopVideo();
+  resetPhotoGesture();
+  $("lb-note").classList.remove("show");
   $("lightbox").hidden = true; lbIndex = -1;
   if ($("collage").hidden) { flyHome(); holdRotation(5000); }
   lastFocus?.focus?.();
 }
 $("lb-close").addEventListener("click", closeLightbox);
-$("lb-prev").addEventListener("click", () => openLightbox(lbIndex - 1));
-$("lb-next").addEventListener("click", () => openLightbox(lbIndex + 1));
-$("lightbox").addEventListener("click", (e) => { if (e.target === $("lightbox")) closeLightbox(); });
-let swipe = null;
-// Not on the video, where a drag is scrubbing its controls.
-$("lb-figure").addEventListener("pointerdown", (e) => (swipe = e.target.tagName === "VIDEO" ? null : e.clientX));
-$("lb-figure").addEventListener("pointerup", (e) => {
-  if (swipe === null) return; const dx = e.clientX - swipe; swipe = null;
-  if (Math.abs(dx) > 50) openLightbox(lbIndex + (dx < 0 ? 1 : -1));
+$("lb-prev").addEventListener("click", () => stepLightbox(-1));
+$("lb-next").addEventListener("click", () => stepLightbox(1));
+
+let noteTimer = 0;
+function flashNote(text) {
+  const n = $("lb-note"); n.textContent = text; n.classList.add("show");
+  clearTimeout(noteTimer); noteTimer = setTimeout(() => n.classList.remove("show"), 1800);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Lightbox gestures, on one handler so they can't fight. A sideways drag carries the photo with the
+// finger and lets go onto the next one; a drag down puts it back on the tree; a pinch, a double tap
+// or the wheel zooms the photo inside its polaroid, and a zoomed photo pans instead. The buttons, the
+// reactions and a video's control strip keep their own taps and drags. The whole lightbox takes
+// these (touch-action: none), so a pinch zooms the photo, not the page under it.
+// ---------------------------------------------------------------------------------------------
+const lbEl = $("lightbox"), figEl = $("lb-figure");
+const SLOP = 10, ZOOM_MAX = 4, VIDEO_CONTROLS = 56, BASE_TILT = "rotate(-1.2deg)";
+const zoom = { s: 1, x: 0, y: 0 }, pointers = new Map();
+let gesture = null, leaving = false, swallowClick = false, lastTap = null;
+const canZoom = () => $("lb-video").hidden;   // photos zoom; a video has its own player
+
+function setZoom(s, x, y, animate = false) {
+  const img = $("lb-img"), box = $("lb-photo");
+  s = THREE.MathUtils.clamp(s, 1, ZOOM_MAX);
+  const mx = (box.clientWidth * (s - 1)) / 2, my = (box.clientHeight * (s - 1)) / 2;   // as far as it can go and still cover the box
+  zoom.s = s; zoom.x = THREE.MathUtils.clamp(x, -mx, mx); zoom.y = THREE.MathUtils.clamp(y, -my, my);
+  img.style.transition = animate && !REDUCE ? "transform 0.25s cubic-bezier(.2, .8, .2, 1)" : "";
+  img.style.transform = s > 1 ? `translate(${zoom.x}px, ${zoom.y}px) scale(${s})` : "";
+  lbEl.classList.toggle("zoomed", s > 1);
+}
+function fromMiddle(x, y) { const r = $("lb-photo").getBoundingClientRect(); return { x: x - (r.left + r.width / 2), y: y - (r.top + r.height / 2) }; }
+// Zoom keeping the spot under the fingers or cursor where it is.
+function zoomAt(cx, cy, s, animate = false) {
+  const p = fromMiddle(cx, cy), k = THREE.MathUtils.clamp(s, 1, ZOOM_MAX) / zoom.s;
+  setZoom(s, p.x - (p.x - zoom.x) * k, p.y - (p.y - zoom.y) * k, animate);
+}
+function resetPhotoGesture() {
+  figEl.getAnimations().forEach((a) => a.cancel());
+  figEl.style.transform = "";
+  lbEl.style.removeProperty("--pull"); lbEl.classList.remove("settling");
+  setZoom(1, 0, 0);
+  gesture = null; pointers.clear(); leaving = false; lastTap = null;
+}
+// A drag that didn't go far enough: the photo springs back and the backdrop comes back.
+function settle() {
+  const from = figEl.style.transform;
+  figEl.style.transform = "";
+  lbEl.classList.add("settling"); lbEl.style.removeProperty("--pull");
+  setTimeout(() => lbEl.classList.remove("settling"), 260);
+  if (from && !REDUCE) figEl.animate([{ transform: from }, { transform: BASE_TILT }], { duration: 240, easing: "cubic-bezier(.2, .8, .2, 1)" });
+}
+// The arrows, the arrow keys and a swipe all come here. A swipe throws the photo off the way it was going first.
+async function stepLightbox(dir, dragged = false) {
+  if (lbIndex < 0 || leaving) return;
+  if (dragged && !REDUCE) {
+    leaving = true;
+    await figEl.animate([{ transform: figEl.style.transform || BASE_TILT }, { transform: `translateX(${-dir * innerWidth}px) rotate(${-1.2 - dir * 8}deg)`, opacity: 0 }],
+      { duration: 200, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" }).finished.catch(() => {});
+    if (lbIndex < 0) return;   // closed meanwhile
+  }
+  openLightbox(lbIndex + dir, dir);
+}
+async function pullClose() {
+  if (!REDUCE) {
+    leaving = true;
+    lbEl.classList.add("settling"); lbEl.style.setProperty("--pull", "1");
+    await figEl.animate([{ transform: figEl.style.transform || BASE_TILT }, { transform: `translateY(${innerHeight * 0.5}px) scale(0.85) ${BASE_TILT}`, opacity: 0 }],
+      { duration: 220, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" }).finished.catch(() => {});
+  }
+  if (lbIndex >= 0) closeLightbox();
+}
+function twoFingers() { const [a, b] = [...pointers.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; }
+function capture(id) { try { lbEl.setPointerCapture(id); } catch { /* already up */ } }
+
+lbEl.addEventListener("pointerdown", (e) => {
+  swallowClick = false;
+  if (e.pointerType === "mouse") pointers.clear();   // a mouse is one pointer, whatever was missed
+  if (leaving || pointers.size >= 2 || (e.pointerType === "mouse" && e.button !== 0)) return;
+  if (e.target.closest("button, a, input, .lb-react")) return;
+  if (e.target.tagName === "VIDEO" && e.clientY > e.target.getBoundingClientRect().bottom - VIDEO_CONTROLS) return;   // its scrubber
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) {
+    gesture = { mode: "tap", id: e.pointerId, x0: e.clientX, y0: e.clientY, onPhoto: e.target === $("lb-img"), trail: [] };
+  } else if (canZoom()) {
+    if (gesture?.mode === "swipe" || gesture?.mode === "pull") settle();
+    const m = twoFingers();
+    gesture = { mode: "pinch", m0: fromMiddle(m.x, m.y), d0: Math.max(m.d, 1), z0: { ...zoom } };
+    pointers.forEach((_, id) => capture(id));
+    swallowClick = true;
+  }
 });
+lbEl.addEventListener("pointermove", (e) => {
+  const pt = pointers.get(e.pointerId);
+  if (!pt || !gesture) return;
+  pt.x = e.clientX; pt.y = e.clientY;
+  if (gesture.mode === "pinch") {
+    if (pointers.size < 2) return;
+    const m = twoFingers(), p = fromMiddle(m.x, m.y), z = gesture.z0;
+    const s = THREE.MathUtils.clamp(z.s * (m.d / gesture.d0), 1, ZOOM_MAX), k = s / z.s;
+    setZoom(s, p.x - (gesture.m0.x - z.x) * k, p.y - (gesture.m0.y - z.y) * k);   // follows the fingers as they move, too
+    return;
+  }
+  if (e.pointerId !== gesture.id) return;
+  const dx = e.clientX - gesture.x0, dy = e.clientY - gesture.y0;
+  gesture.trail.push({ x: e.clientX, y: e.clientY, t: e.timeStamp });
+  if (gesture.trail.length > 6) gesture.trail.shift();
+  if (gesture.mode === "tap") {
+    if (Math.hypot(dx, dy) < SLOP) return;
+    gesture.mode = zoom.s > 1 ? "pan" : Math.abs(dx) > Math.abs(dy) ? "swipe" : "pull";
+    gesture.z0 = { ...zoom };
+    swallowClick = true; capture(e.pointerId);
+    figEl.getAnimations().forEach((a) => a.finish());   // an entrance still playing would hold the photo still
+  }
+  if (gesture.mode === "pan") setZoom(zoom.s, gesture.z0.x + dx, gesture.z0.y + dy);
+  else if (gesture.mode === "swipe") figEl.style.transform = `translateX(${dx}px) rotate(${-1.2 + dx * 0.012}deg)`;
+  else {
+    const y = dy > 0 ? dy : dy * 0.25;   // upward only gives a little
+    figEl.style.transform = `translateY(${y}px) scale(${1 - Math.min(Math.max(y, 0), 400) / 1600}) ${BASE_TILT}`;
+    lbEl.style.setProperty("--pull", clamp01(y / 320).toFixed(3));
+  }
+});
+function endPointer(e) {
+  if (!pointers.delete(e.pointerId) || !gesture) return;
+  const g = gesture, cancelled = e.type === "pointercancel";
+  if (g.mode === "pinch") {
+    // One finger left on the photo carries on as a pan.
+    const [rest] = pointers;
+    gesture = rest ? { mode: "pan", id: rest[0], x0: rest[1].x, y0: rest[1].y, z0: { ...zoom }, trail: [] } : null;
+    if (zoom.s < 1.05) setZoom(1, 0, 0, true);
+    return;
+  }
+  if (e.pointerId !== g.id) return;
+  gesture = null;
+  const dx = e.clientX - g.x0, dy = e.clientY - g.y0, a = g.trail[0], b = g.trail.at(-1);
+  const dt = a && b ? b.t - a.t : 0, vx = dt > 0 ? (b.x - a.x) / dt : 0, vy = dt > 0 ? (b.y - a.y) / dt : 0;   // px per ms
+  if (g.mode === "swipe") {
+    const far = Math.abs(dx) > Math.max(60, figEl.offsetWidth * 0.25), flick = Math.abs(vx) > 0.5 && Math.abs(dx) > 20 && Math.sign(vx) === Math.sign(dx);
+    if (!cancelled && photos.length > 1 && (far || flick)) stepLightbox(dx < 0 ? 1 : -1, true); else settle();
+  } else if (g.mode === "pull") {
+    if (!cancelled && (dy > 110 || (vy > 0.6 && dy > 30))) pullClose(); else settle();
+  } else if (g.mode === "tap" && !cancelled && g.onPhoto && canZoom()) {
+    // A double tap (or double click) zooms in on that spot, or back out.
+    if (lastTap && e.timeStamp - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) {
+      lastTap = null;
+      if (zoom.s > 1) setZoom(1, 0, 0, true); else zoomAt(e.clientX, e.clientY, 2.5, true);
+    } else lastTap = { t: e.timeStamp, x: e.clientX, y: e.clientY };
+  }
+}
+lbEl.addEventListener("pointerup", endPointer);
+lbEl.addEventListener("pointercancel", endPointer);
+// A tap on the dim backdrop closes it, but not the click that ends a drag.
+lbEl.addEventListener("click", (e) => { if (swallowClick) { swallowClick = false; return; } if (e.target === lbEl) closeLightbox(); });
+$("lb-photo").addEventListener("wheel", (e) => {
+  if (!canZoom()) return;
+  e.preventDefault();
+  const d = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+  zoomAt(e.clientX, e.clientY, zoom.s * Math.exp(-d * (e.ctrlKey ? 0.01 : 0.002)));   // ctrlKey: a trackpad pinch
+}, { passive: false });
+// Safari on a Mac pinches with gesture events, not ctrl+wheel. (On a phone the pointers above do it.)
+let gestureFrom = 1;
+lbEl.addEventListener("gesturestart", (e) => { e.preventDefault(); gestureFrom = zoom.s; });
+lbEl.addEventListener("gesturechange", (e) => { e.preventDefault(); if (!pointers.size && canZoom()) zoomAt(e.clientX, e.clientY, gestureFrom * e.scale); });
 
 const collagePhotos = [];
 
@@ -543,6 +724,7 @@ function updateNewPhotoCount() {
   const badge = $("new-photo-count");
   badge.textContent = count ? `${count} new` : "";
   badge.hidden = !count;
+  $("new-hint").hidden = !count;   // says what the gold dot on a polaroid means
   stripFade($("tools"));
 }
 
@@ -621,7 +803,7 @@ function setCardMode(on) {
   // Zooming in on the card: one finger pans once zoomed in (cardGestures).
   controls.minDistance = on ? cardView().radius / CARD_ZOOM : TREE_MIN_DIST;
   if (on && card) card.position.y = card.userData.baseY;   // hold still to be read, no bobbing
-  cardGestures();
+  cardGestures(); updateHint();   // cardGestures skips the hint when the zoom state hasn't changed
   stripFade($("tools"));
 }
 // The first tap flies in to the card's front; once there, each tap flips it (fitting it back first if zoomed in).
@@ -642,7 +824,24 @@ async function showCard() {
 const CARD_ZOOM = 3;
 const FINE_POINTER = matchMedia("(pointer: fine)").matches;
 const TREE_HINT = FINE_POINTER ? "Drag to turn it, scroll to zoom. Tap a photo, or the card." : "Drag to turn, pinch to zoom. Tap a photo or the card.";
-document.querySelector(".mast .hint").textContent = TREE_HINT;
+// The masthead's one line of help says what the view in front of you does: the card's gestures in card
+// view, what a month button did, and on the tree the how-to, until a photo has been opened. It fades
+// rather than going, so the masthead (and the room framing() keeps for it) doesn't change height.
+let hintLearned = false;
+function updateHint() {
+  const el = $("hint");
+  let text = "";
+  if (cardMode) {
+    text = cardZoomed() ? `Drag to look around. ${FINE_POINTER ? "Click" : "Tap"} to fit it back.`
+      : FINE_POINTER ? "Scroll to zoom in. Click the card to flip it." : "Pinch to zoom in. Tap the card to flip it.";
+  } else if (activeMonth >= 0) {
+    const n = monthLit.size, m = MONTHS_LONG[activeMonth];
+    text = `${n === 1 ? `${m}'s photo is` : `${m}'s ${n} photos are`} lit up. Tap ${MONTHS[activeMonth]} again for the whole year.`;
+  } else if (!hintLearned) text = TREE_HINT;
+  if (text) el.textContent = text;
+  el.classList.toggle("quiet", !text);
+}
+updateHint();
 const cardZoomed = () => cardMode && current().radius < cardView().radius * 0.92;
 function fitCard() { holdRotation(0); return flyTo(cardView(), 0.5); }
 let zoomedBefore = null;
@@ -652,9 +851,7 @@ function cardGestures() {
   zoomedBefore = zoomed;
   controls.touches.ONE = zoomed ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
   controls.mouseButtons.LEFT = zoomed ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
-  document.querySelector(".mast .hint").textContent = !cardMode ? TREE_HINT
-    : zoomed ? `Drag to look around. ${FINE_POINTER ? "Click" : "Tap"} to fit it back.`
-    : FINE_POINTER ? "Scroll to zoom in. Click the card to flip it." : "Pinch to zoom in. Tap the card to flip it.";
+  updateHint();
 }
 const cardRight = new THREE.Vector3(), shift = new THREE.Vector3();
 /**
@@ -696,7 +893,7 @@ $("btn-flip").addEventListener("click", showCard);
 $("btn-tree").addEventListener("click", leaveCard);
 // Pinching well out from the card counts as leaving it. Zooming in doesn't: that's reading it.
 controls.addEventListener("end", () => { if (cardMode && current().radius > cardView().radius + 1) { setCardMode(false); holdRotation(); } });
-$("btn-replay").addEventListener("click", () => { setCardMode(false); activeMonth = -1; monthLit.clear(); buildMonths(); startIntro(); });
+$("btn-replay").addEventListener("click", () => { setCardMode(false); activeMonth = -1; monthLit.clear(); buildMonths(); updateHint(); startIntro(); });
 
 // The months and (on a phone) the tools scroll sideways; fade the edge that has more to show.
 function stripFade(el) {
@@ -724,9 +921,9 @@ $("btn-snow").addEventListener("click", (e) => { snowOn = !snowOn; e.currentTarg
 
 document.addEventListener("keydown", (e) => {
   if (!$("lightbox").hidden) {
-    if (e.key === "ArrowRight") openLightbox(lbIndex + 1);
-    else if (e.key === "ArrowLeft") openLightbox(lbIndex - 1);
-    else if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowRight") stepLightbox(1);
+    else if (e.key === "ArrowLeft") stepLightbox(-1);
+    else if (e.key === "Escape") { if (zoom.s > 1) setZoom(1, 0, 0, true); else closeLightbox(); }
   } else if (e.key === "Escape") {
     if (!$("hello").hidden) $("hello-skip").click();
     else if (!$("note").hidden) closeNote();
@@ -847,7 +1044,7 @@ function greetRecipient(r) {
 
 function setPhotos(list) {
   photos = list; activeMonth = -1; monthLit.clear();
-  setCardMode(false);
+  setCardMode(false); updateHint();
   buildTree(photos); buildMonths(); buildCollage(); stripFade($("months"));
   updateNewPhotoCount();
   $("lede").textContent = `${photos.length} moments from our year, hung on the tree.`;

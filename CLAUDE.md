@@ -136,6 +136,18 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   Safari's toolbars hidden, which pushed the ✕ and the arrows off a phone screen. A phone on its side
   puts them beside the photo instead. The meta is pinned to the bottom (or the right, on its side) and the
   photo floats in the room left, so the reactions and arrows don't move between tall and wide photos.
+- **Lightbox gestures:** one pointer handler on the whole lightbox (`touch-action: none`, so a pinch never
+  zooms the page). A sideways drag carries the photo with the finger and commits past a quarter of its
+  width or on a flick; a drag down closes it; pinch, double tap or the wheel zooms the photo inside its
+  polaroid (`.lb-photo` clips it), and a zoomed photo pans instead of swiping. Swipes work on a video
+  except its bottom `VIDEO_CONTROLS` px, where the scrubber is. The arrows, arrow keys and swipes all go
+  through `stepLightbox`, and the next photo slides in from the side it's on. Going past either end
+  wraps, and `#lb-note` says so.
+- **The masthead hint** (`updateHint`) describes what's on screen: the card's gestures in card view, what
+  a month button lit up, and on the tree the how-to, until a photo has been opened (session only). It
+  fades rather than going, so the masthead keeps its height for `framing()`. When there are new photos,
+  a second line explains the gold dot. A touch tap that just misses a polaroid opens the nearest one on
+  the near side of the tree (`nearestPhoto`).
 - **Hiding the words and buttons:** the expand button top right (or `H`) fades the
   masthead, dock and version stamp, and turns into a collapse button that brings them back, so nothing covers the tree; `framing()` then reserves no room for them, and a view at
   home glides to fill the screen. It isn't remembered, so the next visit opens with the greeting.

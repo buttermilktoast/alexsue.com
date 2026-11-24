@@ -31,7 +31,8 @@
     <p class="eyebrow">Mele Kalikimaka<span id="who-wrap" hidden>, <button class="who" id="who" type="button" title="Change your name"></button></span></p>
     <h1>The Sue Family <span class="year">2026</span></h1>
     <p class="lede" id="lede">Our year, hung on the tree.</p>
-    <p class="hint">Drag to turn it. Tap a photo, or the card.</p>
+    <p class="hint" id="hint">Drag to turn it. Tap a photo, or the card.</p>
+    <p class="hint new-hint" id="new-hint" hidden><span class="dot" aria-hidden="true"></span>New since your last visit</p>
     <p class="draft" id="draft" hidden></p>
   </header>
 
@@ -67,9 +68,12 @@
 
 <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-labelledby="lb-caption">
   <button class="round lb-close" id="lb-close" type="button" aria-label="Close photo">✕</button>
+  <p class="lb-note" id="lb-note" role="status" aria-live="polite"></p>
   <figure class="lb-polaroid" id="lb-figure">
-    <img id="lb-img" alt="">
-    <video id="lb-video" hidden playsinline controls preload="none"></video>
+    <div class="lb-photo" id="lb-photo">
+      <img id="lb-img" alt="" draggable="false">
+      <video id="lb-video" hidden playsinline controls preload="none"></video>
+    </div>
     <figcaption><span id="lb-caption"></span><span class="date" id="lb-date"></span></figcaption>
   </figure>
   <div class="lb-meta">
