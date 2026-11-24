@@ -229,10 +229,13 @@ function buildCard(frontSrc, backSrc) {
 // Camera framing and motion
 // ---------------------------------------------------------------------------------------------
 const tanHalf = () => Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+// With the words and buttons hidden (setChromeHidden), there's nothing to keep the tree clear of.
+let chromeHidden = false;
 function framing() {
   const w = innerWidth, h = innerHeight, aspect = w / h, narrow = aspect < 0.9;
   const mast = document.querySelector(".mast").getBoundingClientRect(), dock = $("dock").getBoundingClientRect();
-  const topRes = narrow ? Math.min(0.4, (mast.bottom + 8) / h) : 0.03, botRes = Math.min(0.3, (h - dock.top + 6) / h);
+  const topRes = chromeHidden ? 0.04 : narrow ? Math.min(0.4, (mast.bottom + 8) / h) : 0.03;
+  const botRes = chromeHidden ? 0.04 : Math.min(0.3, (h - dock.top + 6) / h);
   const usable = Math.max(0.4, 1 - topRes - botRes);
   const dH = (TOP_Y - BOTTOM_Y) / (usable * 2 * tanHalf());
   const dW = ((CONTENT_W / 2) / (tanHalf() * aspect)) * (narrow ? 0.86 : 1);
@@ -701,6 +704,21 @@ function stripFade(el) {
   el.classList.toggle("more-l", l); el.classList.toggle("more-r", r);
 }
 for (const id of ["months", "tools"]) $(id).addEventListener("scroll", (e) => stripFade(e.currentTarget), { passive: true });
+// Hide the words and buttons so nothing covers the tree (on a phone the masthead sits over its top).
+// If the view is at home, it glides to the new home that uses the whole screen; a zoomed-in view stays put.
+// Not remembered: the next visit opens with the greeting.
+function setChromeHidden(on) {
+  const home = framing(), c = current();
+  const atHome = introDone && !cardMode && !flying && !overlayOpen()
+    && Math.abs(c.radius - home.dist) < home.dist * 0.04 && Math.abs(c.targetY - home.targetY) < 0.1;
+  chromeHidden = on;
+  $("app").classList.toggle("bare", on);
+  const btn = $("btn-chrome"), label = on ? "Show the words and buttons" : "Hide the words and buttons";
+  btn.setAttribute("aria-pressed", String(on)); btn.title = label;
+  if (atHome) flyHome(0.6);
+}
+$("btn-chrome").addEventListener("click", () => setChromeHidden(!chromeHidden));
+
 let snowOn = true;
 $("btn-snow").addEventListener("click", (e) => { snowOn = !snowOn; e.currentTarget.setAttribute("aria-pressed", String(snowOn)); if (!snowOn) snowCtx.clearRect(0, 0, snowCv.width, snowCv.height); });
 
@@ -714,6 +732,9 @@ document.addEventListener("keydown", (e) => {
     else if (!$("note").hidden) closeNote();
     else if (!$("waitlist").hidden) $("wl-close").click();
     else if (!$("collage").hidden) $("collage-close").click();
+  } else if (e.key.toLowerCase() === "h" && !e.metaKey && !e.ctrlKey && !e.altKey && !e.target.closest("input, textarea")
+    && $("collage").hidden && $("hello").hidden && $("note").hidden && $("waitlist").hidden) {
+    setChromeHidden(!chromeHidden);
   }
 });
 

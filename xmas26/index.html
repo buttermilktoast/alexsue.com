@@ -54,7 +54,13 @@
     </div>
   </div>
 
-  <p class="version" id="version"></p>
+  <div class="corner">
+    <p class="version" id="version"></p>
+    <button class="round chrome-toggle" id="btn-chrome" type="button" aria-pressed="false" aria-label="Hide the words and buttons" title="Hide the words and buttons">
+      <svg class="expand" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5"/></svg>
+      <svg class="collapse" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 3v4.5H3M17 7.5h-4.5V3M12.5 17v-4.5H17M3 12.5h4.5V17"/></svg>
+    </button>
+  </div>
 
   <div id="loading"><p>Hanging the photos…</p></div>
 </div>

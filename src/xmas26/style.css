@@ -66,14 +66,27 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   background: var(--glass);
 }
 
-/* The deployed commit: a quiet corner stamp, clear of the masthead and the dock. */
-.version {
-  position: absolute; z-index: 3; margin: 0; pointer-events: none;
-  top: calc(env(safe-area-inset-top, 0px) + 14px);
+/* Top right: the deployed commit, a quiet stamp, beside the button that hides the words and buttons. */
+.corner {
+  position: absolute; z-index: 4; display: flex; align-items: center; gap: 10px;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   right: max(16px, env(safe-area-inset-right, 0px));
+}
+.version {
+  margin: 0; pointer-events: none;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.68rem; letter-spacing: 0.02em;
   color: var(--muted); opacity: 0.6;
 }
+.chrome-toggle { backdrop-filter: blur(10px); color: var(--muted); }
+.chrome-toggle:hover { color: var(--ink); }
+.chrome-toggle svg { width: 20px; height: 20px; }
+.chrome-toggle .collapse, #app.bare .chrome-toggle .expand { display: none; }
+#app.bare .chrome-toggle .collapse { display: block; }
+#app.bare .chrome-toggle { opacity: 0.75; }
+
+/* Hidden, the tree has the screen to itself (main.js reframes it). Fade out, then stop taking taps. */
+.mast, .dock, .version { transition: opacity 0.3s ease, visibility 0s; }
+#app.bare .mast, #app.bare .dock, #app.bare .version { opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s 0.3s; }
 
 /* ---- Dock: months + tools ---- */
 .dock {
@@ -128,8 +141,10 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: rgba(5, 12, 10, 0.66); backdrop-filter: blur(5px);
 }
+/* The photo floats in whatever room the meta leaves, and the meta keeps still at the bottom (or, on a phone
+   on its side, at the right), so the reactions and arrows don't jump as a tall photo follows a wide one. */
 .lb-polaroid {
-  margin: 0; background: var(--paper); padding: 14px 14px 0; width: min(600px, 100%);
+  margin: auto; background: var(--paper); padding: 14px 14px 0; width: min(600px, 100%);
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55); transform: rotate(-1.2deg); touch-action: pan-y;
   animation: lb-in 0.45s cubic-bezier(.2, .8, .2, 1);
 }
@@ -145,7 +160,7 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 }
 .lb-polaroid figcaption #lb-caption { min-width: 0; overflow-wrap: anywhere; }
 .lb-polaroid figcaption .date { color: #8a5a2b; font-size: 1.6rem; white-space: nowrap; }
-.lb-meta { width: min(600px, 100%); display: grid; gap: 4px; text-align: center; }
+.lb-meta { flex: none; width: min(600px, 100%); display: grid; gap: 4px; text-align: center; }
 .lb-meta p { margin: 0; }
 #lb-place { font-size: 1.05rem; color: var(--ink); }
 #lb-by { font-size: 0.85rem; color: var(--muted); }
@@ -265,7 +280,7 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 /* Phone: the tree is the page. A one-line masthead and a one-row dock give it the screen. */
 @media (max-width: 640px) {
   .mast { top: calc(env(safe-area-inset-top, 0px) + 12px); left: max(16px, env(safe-area-inset-left, 0px)); max-width: calc(100% - 32px); }
-  .eyebrow { font-size: 1.45rem; padding-right: 7rem; } /* room for .version: a long name wraps rather than runs into it */
+  .eyebrow { font-size: 1.45rem; padding-right: 10rem; } /* room for .corner: a long name wraps rather than runs into it */
   .mast h1 { font-size: 1.6rem; text-wrap: nowrap; }
   .mast h1 .year { display: inline; font-size: 1em; line-height: 1; letter-spacing: 0; color: var(--ember); }
   .lede { display: none; }
@@ -284,8 +299,8 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   .lb-polaroid { padding: 10px 10px 0; }
   .lb-polaroid figcaption { font-size: 1.75rem; padding-bottom: 0.45rem; }
   .lb-polaroid figcaption .date { font-size: 1.35rem; }
-  .lb-react { gap: 5px; margin-top: 4px; }
-  .react { min-width: 40px; height: 38px; padding: 0 9px; gap: 4px; }
+  .lb-react { flex-wrap: nowrap; gap: 5px; margin-top: 4px; } /* one row always: a wrap would move them as counts grow */
+  .react { min-width: 40px; height: 38px; padding: 0 7px; gap: 3px; }
   .lb-row { margin-top: 2px; }
 }
 /* A phone on its side: too short for a photo with everything under it, so the words and buttons go beside it. */
@@ -295,10 +310,10 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
     padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     padding-right: max(68px, calc(env(safe-area-inset-right, 0px) + 60px)); /* clear of the ✕ */
   }
-  .lb-meta { width: min(300px, 40%); flex: none; }
+  .lb-meta { width: min(300px, 40%); align-self: stretch; align-content: end; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lb-polaroid { animation: none; }
   .react.pop .e { animation: none; }
-  .pol, #loading { transition: none; }
+  .pol, #loading, .mast, .dock, .version { transition: none !important; }
 }
