@@ -46,11 +46,17 @@ const matching = computed(() => {
 const date = computed(() => new Intl.DateTimeFormat(undefined, {
   weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
 }).format(now.value))
-const age = computed(() => snapshot.value?.generatedAt ? relativeTime(snapshot.value.generatedAt) : '')
+const collectionTime = computed(() => Date.parse(snapshot.value?.generatedAt))
+const delayed = computed(() => now.value - collectionTime.value >= 2 * 60 * 60 * 1000)
+const collectionLabel = computed(() => Number.isFinite(collectionTime.value)
+  ? `Last feed collection on ${new Date(collectionTime.value).toLocaleString()}`
+  : '')
 const feedStatus = computed(() => {
   if (loading.value) return 'Checking feeds…'
-  if (failed.value) return snapshot.value ? 'Using last available headlines' : 'Feed update unavailable'
-  return age.value ? `Updated ${age.value}` : 'Waiting for first feed update'
+  if (!Number.isFinite(collectionTime.value)) return failed.value ? 'Feed update unavailable' : 'Waiting for first feed update'
+  const age = relativeTime(collectionTime.value)
+  if (failed.value) return `Last available update ${age}`
+  return delayed.value ? `Refresh delayed · last update ${age}` : `Headlines updated ${age}`
 })
 
 function readLocal(key) {
@@ -86,7 +92,7 @@ async function refresh() {
   loading.value = true
   lastChecked = Date.now()
   try {
-    const response = await fetch('./feeds.json', { cache: 'no-cache', signal: AbortSignal.timeout(10000) })
+    const response = await fetch('./feeds.json', { cache: 'no-store', signal: AbortSignal.timeout(10000) })
     if (!response.ok) throw new Error('Feed snapshot unavailable')
     const data = await response.json()
     if (!data.feeds || typeof data.feeds !== 'object') throw new Error('Invalid feed snapshot')
@@ -234,7 +240,7 @@ onUnmounted(() => {
         </button>
       </nav>
       <div class="feed-status">
-        <span>{{ feedStatus }}</span>
+        <span :title="collectionLabel">{{ feedStatus }}</span>
         <button type="button" class="icon-button" aria-label="Check for updated headlines" title="Check for updated headlines" :disabled="loading" @click="refresh">
           <Icon name="refresh" :class="{ spinning: loading }" />
         </button>
