@@ -288,6 +288,8 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 /* A dotted underline says the name is a button (to change it, or to read the note again); there's no hover on a phone. */
 .who:not(:disabled) { text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .who:disabled { cursor: default; }
+/* After a skip: a quiet way back to the name question. */
+.who.add { opacity: 0.7; }
 .who:disabled:hover { text-decoration: none; }
 /* The family's note to the person a personal link is for. */
 .sheet .note-msg { color: var(--ink); font-size: 1.02rem; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; max-height: 46vh; overflow-y: auto; }

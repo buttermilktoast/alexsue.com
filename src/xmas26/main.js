@@ -983,14 +983,20 @@ $("wl-form").addEventListener("submit", async (e) => {
 
 // ---------------------------------------------------------------------------------------------
 // Who's opening the card: asked once, before the tree appears. The name stays in this browser to
-// greet them, and each new name is posted to the API. Skipping is remembered too ("" in storage).
+// greet them, and each new name is posted to the API. Skipping is remembered too ("" in storage),
+// counted once (anonymously), and leaves an "add your name" link in the greeting for later.
 // ---------------------------------------------------------------------------------------------
 const NAME_KEY = "xmas26-name";
 const storedName = () => { try { return localStorage.getItem(NAME_KEY); } catch { return null; } };
 const storeName = (name) => { try { localStorage.setItem(NAME_KEY, name); } catch { /* private window: ask again next time */ } };
+/** `name` is null before anyone's asked, "" after a skip (offer to add one), else the name. */
 function greet(name) {
-  $("who").textContent = name || "";
-  $("who-wrap").hidden = !name;
+  const add = name === "";
+  $("who").textContent = add ? "add your name" : name || "";
+  $("who").title = add ? "Add your name" : "Change your name";
+  $("who").classList.toggle("add", add);
+  $("who-sep").textContent = add ? " · " : ", ";
+  $("who-wrap").hidden = !name && !add;
 }
 let helloDone = null;
 function openHello(change = false) {
@@ -1017,7 +1023,17 @@ $("hello-form").addEventListener("submit", (e) => {
   }
   closeHello();
 });
-$("hello-skip").addEventListener("click", () => { if (storedName() === null) storeName(""); closeHello(); });
+$("hello-skip").addEventListener("click", () => {
+  if (storedName() === null) {   // the first skip, not Cancel on a change: count it, with nothing about who
+    storeName("");
+    fetch(`${API_BASE}/visitors`, {
+      method: "POST", headers: { "content-type": "application/json" }, keepalive: true,
+      body: JSON.stringify({ skipped: true, source: "xmas26", website: $("hello-website").value }),
+    }).catch(() => {});
+  }
+  if (!recipient) greet(storedName() ?? "");
+  closeHello();
+});
 $("who").addEventListener("click", () => (recipient ? recipient.message && openNote(true) : openHello(true)));
 
 // A personal link: no question to ask. The name comes from the family, and their note opens first.
