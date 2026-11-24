@@ -1,7 +1,7 @@
 // node --test src/xmas26/data.test.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, reactionCountsFromApi, createReactionMemory, postReaction } from './data.js'
+import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, reactionCountsFromApi, createReactionMemory, postReaction, splitReactions, moreSummary, REACTION_EMOJI, REACTION_NAMES, QUICK_REACTIONS } from './data.js'
 
 test('dayOf keeps the calendar day the photo was taken, in its own time zone', () => {
   const d = dayOf('2026-07-12T23:30:00-10:00')
@@ -152,12 +152,31 @@ test('reactionsFromApi: known emoji in order, nothing when off or missing', () =
   assert.deepEqual(reactionsFromApi(undefined), [])
 })
 
+test('reaction keys: every emoji has a name, and keys fit the API (lowercase letters)', () => {
+  assert.deepEqual(Object.keys(REACTION_NAMES), Object.keys(REACTION_EMOJI))
+  for (const k of Object.keys(REACTION_EMOJI)) assert.match(k, /^[a-z]+$/)
+  assert.equal(new Set(Object.values(REACTION_EMOJI)).size, Object.keys(REACTION_EMOJI).length)
+  for (const k of QUICK_REACTIONS) assert.ok(Object.hasOwn(REACTION_EMOJI, k))
+})
+
+test('splitReactions: the quick row, then the picker, in the API order', () => {
+  assert.deepEqual(splitReactions(['heart', 'hug', 'laugh', 'santa']), { quick: ['heart', 'laugh'], more: ['hug', 'santa'] })
+  assert.deepEqual(splitReactions(['heart', 'laugh']), { quick: ['heart', 'laugh'], more: [] })   // an API with no extras: no picker
+})
+
+test('moreSummary: top two picker emoji by taps (ties in picker order) and their total', () => {
+  const more = ['smile', 'hug', 'santa', 'cookie']
+  assert.deepEqual(moreSummary(more, {}), { top: [], total: 0 })
+  assert.deepEqual(moreSummary(more, { heart: 9, santa: 1 }), { top: ['santa'], total: 1 })   // quick ones don't count
+  assert.deepEqual(moreSummary(more, { cookie: 2, hug: 2, santa: 5, smile: 1 }), { top: ['santa', 'hug'], total: 10 })
+})
+
 test('photosFromApi keeps tidy reaction counts', () => {
   const [p, q] = photosFromApi([
-    { id: 'p_a', url: 'https://cdn/a.jpg', takenAt: '2026-01-01', reactions: { heart: 3, laugh: 0, tree: 1.5, nope: 9, clap: -2 } },
+    { id: 'p_a', url: 'https://cdn/a.jpg', takenAt: '2026-01-01', reactions: { heart: 3, laugh: 0, tree: 1.5, nope: 9, clap: -2, hug: 2 } },
     { id: 'p_b', url: 'https://cdn/b.jpg', takenAt: '2026-02-01' },
   ])
-  assert.deepEqual(p.reactions, { heart: 3 })
+  assert.deepEqual(p.reactions, { heart: 3, hug: 2 })
   assert.deepEqual(q.reactions, {})
   assert.deepEqual(reactionCountsFromApi('junk'), {})
 })

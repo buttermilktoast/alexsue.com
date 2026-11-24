@@ -162,10 +162,27 @@ export function previewLabel({ realPhotos, realFront, realBack }) {
 
 // ---------------------------------------------------------------------------------------------
 // Emoji reactions: tap one under a photo, see how many people did. Anonymous counts, no comments.
-// Keep the keys in step with REACTIONS in the merryroll API (api/src/lib.mjs).
+// Keep the keys in step with REACTIONS in the merryroll API (api/src/lib.mjs). Only warm, family-safe
+// emoji, mostly faces, and nothing newer than Emoji 14 (iOS 15.4), so every phone has the glyph.
 // ---------------------------------------------------------------------------------------------
-export const REACTION_EMOJI = Object.freeze({ heart: '❤️', laugh: '😂', love: '😍', aww: '🥹', clap: '👏', tree: '🎄' })
-export const REACTION_NAMES = Object.freeze({ heart: 'Heart', laugh: 'Laughing', love: 'Heart eyes', aww: 'Aww', clap: 'Clapping', tree: 'Christmas tree' })
+export const REACTION_EMOJI = Object.freeze({
+  heart: '❤️', laugh: '😂', love: '😍', aww: '🥹', clap: '👏', tree: '🎄',
+  // The "more" picker, in its order: faces, then hearts and hands, then the season.
+  smile: '😊', grin: '😄', rofl: '🤣', adore: '🥰', kiss: '😘', hug: '🤗', starstruck: '🤩',
+  wow: '😮', halo: '😇', cool: '😎', party: '🥳', yum: '😋', wink: '😉', tear: '🥲',
+  hearthands: '🫶', sparkleheart: '💖', hearts: '💕', thumbsup: '👍', hooray: '🙌', thanks: '🙏',
+  sparkles: '✨', tada: '🎉', star: '🌟', gift: '🎁', snowman: '⛄', snowflake: '❄️', santa: '🎅', cookie: '🍪',
+})
+export const REACTION_NAMES = Object.freeze({
+  heart: 'Heart', laugh: 'Laughing', love: 'Heart eyes', aww: 'Aww', clap: 'Clapping', tree: 'Christmas tree',
+  smile: 'Smiling', grin: 'Big smile', rofl: 'Rolling with laughter', adore: 'Smiling with hearts', kiss: 'Blowing a kiss',
+  hug: 'Hug', starstruck: 'Star-struck', wow: 'Wow', halo: 'Angel', cool: 'Cool', party: 'Party', yum: 'Yum', wink: 'Wink',
+  tear: 'Smiling with a tear', hearthands: 'Heart hands', sparkleheart: 'Sparkling heart', hearts: 'Two hearts',
+  thumbsup: 'Thumbs up', hooray: 'Hooray', thanks: 'Thank you', sparkles: 'Sparkles', tada: 'Celebrate', star: 'Star',
+  gift: 'Present', snowman: 'Snowman', snowflake: 'Snowflake', santa: 'Santa', cookie: 'Cookie',
+})
+/** The row under every photo. The rest of what the API offers waits behind its "more" chip. */
+export const QUICK_REACTIONS = Object.freeze(['heart', 'laugh', 'love', 'aww', 'clap', 'tree'])
 
 /**
  * The emoji the page offers, in the API's order. Empty when the family has turned reactions off
@@ -174,6 +191,21 @@ export const REACTION_NAMES = Object.freeze({ heart: 'Heart', laugh: 'Laughing',
 export function reactionsFromApi(list) {
   if (!Array.isArray(list)) return []
   return [...new Set(list.filter((k) => typeof k === 'string' && Object.hasOwn(REACTION_EMOJI, k)))]
+}
+
+/** The API's list split into the always-shown row and the picker, each in the API's order. */
+export function splitReactions(keys) {
+  return { quick: keys.filter((k) => QUICK_REACTIONS.includes(k)), more: keys.filter((k) => !QUICK_REACTIONS.includes(k)) }
+}
+
+/**
+ * What the "more" chip shows for one photo, so the row keeps one width on a phone however many
+ * emoji are in use: the (up to) two picker emoji with the most taps, and all the picker's taps added up.
+ */
+export function moreSummary(more, counts = {}, max = 2) {
+  const used = more.filter((k) => counts[k] > 0)
+  const top = used.map((k, i) => ({ k, i, n: counts[k] })).sort((a, b) => b.n - a.n || a.i - b.i).slice(0, max).map(({ k }) => k)
+  return { top, total: used.reduce((sum, k) => sum + counts[k], 0) }
 }
 
 /** One photo's counts, `{ heart: 3 }`: known emoji with whole counts above zero only. */

@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, createReactionMemory, postReaction, REACTION_EMOJI, REACTION_NAMES } from "./data.js";
+import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, createReactionMemory, postReaction, splitReactions, moreSummary, REACTION_EMOJI, REACTION_NAMES } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
 // A personal link (?to=auntiesu) greets that person and shows the family's note to them.
@@ -421,6 +421,7 @@ function preloadFull(p) {
 // dir: +1 for the next photo (it comes in from the right), -1 for the previous one, 0 to open one.
 function openLightbox(i, dir = 0) {
   if (!introDone) finishIntro();
+  closePicker(false);
   setCardMode(false);
   // Going past either end goes round to the other: say so, or it looks like the year started over.
   if (!$("lightbox").hidden && photos.length > 1 && (i < 0 || i >= photos.length)) flashNote(i < 0 ? "Round to the last photo" : "Back to the first photo");
@@ -489,34 +490,73 @@ $("lb-img").addEventListener("load", fitLightbox);   // a sample photo's shape i
 // Emoji reactions under the lightbox photo: tap one to add it, tap again to take it back. Counts are
 // anonymous; this browser remembers its own taps. The API says which emoji are on (none when the
 // family turns reactions off, or for the sample photos), and the row stays hidden without them.
+//
+// Most visitors are on a phone, so the row is one line that never grows: the six quick emoji and a
+// "more" chip. The chip opens a sheet with the rest; once any of those are used on a photo, it shows
+// the top two and their total instead of its add-a-face icon, and the sheet has each one's count.
 // ---------------------------------------------------------------------------------------------
-let reactionKeys = [];
+let reactionKeys = [], moreKeys = [];
 const reacted = createReactionMemory(), reactBusy = new Set();
+const ADD_FACE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20.5 12A8.5 8.5 0 1 1 12 3.5"/><path d="M8.5 14.5q3.5 3.5 7 0"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/><path d="M19.5 1.5v6M16.5 4.5h6"/></svg>`;
+function reactButton(k, className, onClick) {
+  const b = document.createElement("button"); b.type = "button"; b.className = className; b.dataset.key = k;
+  const e = document.createElement("span"); e.className = "e"; e.textContent = REACTION_EMOJI[k]; e.setAttribute("aria-hidden", "true");
+  const n = document.createElement("span"); n.className = "n"; n.setAttribute("aria-hidden", "true");
+  b.append(e, n);
+  b.addEventListener("click", onClick);
+  b.addEventListener("animationend", () => b.classList.remove("pop"));
+  return b;
+}
 function buildReactions(keys) {
-  reactionKeys = keys;
-  const row = $("lb-react"); row.replaceChildren();
-  for (const k of keys) {
-    const b = document.createElement("button"); b.type = "button"; b.className = "react"; b.dataset.key = k;
-    const e = document.createElement("span"); e.className = "e"; e.textContent = REACTION_EMOJI[k]; e.setAttribute("aria-hidden", "true");
-    const n = document.createElement("span"); n.className = "n"; n.setAttribute("aria-hidden", "true");
-    b.append(e, n);
-    b.addEventListener("click", () => toggleReaction(k));
-    b.addEventListener("animationend", () => b.classList.remove("pop"));
-    row.append(b);
-  }
+  const { quick, more } = splitReactions(keys);
+  reactionKeys = keys; moreKeys = more;
+  const row = $("lb-react"); row.replaceChildren(...quick.map((k) => reactButton(k, "react", () => toggleReaction(k))));
+  $("rp-grid").replaceChildren(...more.map((k) => reactButton(k, "rp-item", () => { closePicker(); toggleReaction(k); })));
+  if (!more.length) return;   // an API that offers only the quick ones: no chip, no sheet
+  const b = document.createElement("button"); b.type = "button"; b.className = "react more"; b.id = "react-more";
+  b.setAttribute("aria-haspopup", "dialog"); b.setAttribute("aria-expanded", "false");
+  b.innerHTML = `${ADD_FACE}<span class="stack" aria-hidden="true"></span><span class="n" aria-hidden="true"></span>`;
+  b.addEventListener("click", openPicker);
+  b.addEventListener("animationend", () => b.classList.remove("pop"));
+  row.append(b);
+}
+const restartPop = (b) => { b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); };
+function showCounts(b, p) {
+  const k = b.dataset.key, n = p.reactions?.[k] ?? 0;
+  b.querySelector(".n").textContent = n ? String(n) : "";
+  b.setAttribute("aria-pressed", String(reacted.has(p.id, k)));
+  b.setAttribute("aria-label", `${REACTION_NAMES[k]}${n ? `, ${n}` : ""}`);
 }
 function renderReactions(p, pop = null) {
   const row = $("lb-react");
   row.hidden = !reactionKeys.length;
   if (row.hidden) return;
-  for (const b of row.children) {
-    const k = b.dataset.key, n = p.reactions?.[k] ?? 0, mine = reacted.has(p.id, k);
-    b.querySelector(".n").textContent = n ? String(n) : "";
-    b.setAttribute("aria-pressed", String(mine));
-    b.setAttribute("aria-label", `${REACTION_NAMES[k]}${n ? `, ${n}` : ""}`);
-    if (k === pop) { b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); }
-  }
+  for (const b of row.querySelectorAll(".react[data-key]")) { showCounts(b, p); if (b.dataset.key === pop) restartPop(b); }
+  const more = $("react-more");
+  if (!more) return;
+  const { top, total } = moreSummary(moreKeys, p.reactions ?? {});
+  more.classList.toggle("used", total > 0);
+  more.classList.toggle("mine", moreKeys.some((k) => reacted.has(p.id, k)));
+  more.querySelector(".stack").replaceChildren(...top.map((k) => Object.assign(document.createElement("span"), { textContent: REACTION_EMOJI[k] })));
+  more.querySelector(".n").textContent = total ? String(total) : "";
+  more.setAttribute("aria-label", total ? `More reactions, ${total} so far` : "More reactions");
+  if (moreKeys.includes(pop)) restartPop(more);
+  for (const b of $("rp-grid").children) showCounts(b, p);
 }
+function openPicker() {
+  const p = photos[lbIndex];
+  if (!p) return;
+  renderReactions(p);
+  $("react-pick").hidden = false; $("react-more").setAttribute("aria-expanded", "true");
+  ($("rp-grid").querySelector('[aria-pressed="true"]') ?? $("rp-grid").firstElementChild)?.focus({ preventScroll: true });
+}
+function closePicker(refocus = true) {
+  if ($("react-pick").hidden) return;
+  $("react-pick").hidden = true; $("react-more")?.setAttribute("aria-expanded", "false");
+  if (refocus) $("react-more")?.focus({ preventScroll: true });
+}
+$("rp-close").addEventListener("click", () => closePicker());
+$("react-pick").addEventListener("click", (e) => { if (e.target === e.currentTarget) closePicker(); });   // a tap above the sheet
 async function toggleReaction(k) {
   const p = photos[lbIndex], busy = `${p?.id}#${k}`;
   if (!p || reactBusy.has(busy)) return;
@@ -545,6 +585,7 @@ function stopVideo() {
   v.hidden = true; $("lb-img").hidden = false;
 }
 function closeLightbox() {
+  closePicker(false);
   stopVideo();
   resetPhotoGesture();
   $("lb-note").classList.remove("show");
@@ -632,7 +673,7 @@ lbEl.addEventListener("pointerdown", (e) => {
   swallowClick = false;
   if (e.pointerType === "mouse") pointers.clear();   // a mouse is one pointer, whatever was missed
   if (leaving || pointers.size >= 2 || (e.pointerType === "mouse" && e.button !== 0)) return;
-  if (e.target.closest("button, a, input, .lb-react")) return;
+  if (e.target.closest("button, a, input, .lb-react, .react-pick")) return;
   if (e.target.tagName === "VIDEO" && e.clientY > e.target.getBoundingClientRect().bottom - VIDEO_CONTROLS) return;   // its scrubber
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) {
@@ -921,7 +962,8 @@ $("btn-snow").addEventListener("click", (e) => { snowOn = !snowOn; e.currentTarg
 
 document.addEventListener("keydown", (e) => {
   if (!$("lightbox").hidden) {
-    if (e.key === "ArrowRight") stepLightbox(1);
+    if (!$("react-pick").hidden) { if (e.key === "Escape") closePicker(); }   // the sheet's own keys only
+    else if (e.key === "ArrowRight") stepLightbox(1);
     else if (e.key === "ArrowLeft") stepLightbox(-1);
     else if (e.key === "Escape") { if (zoom.s > 1) setZoom(1, 0, 0, true); else closeLightbox(); }
   } else if (e.key === "Escape") {

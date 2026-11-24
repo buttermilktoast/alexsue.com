@@ -119,8 +119,11 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   `src/analytics.js` GA4 initializer, enabled at the owner's request. Analytics
   runs only in production on the site's domains with a valid measurement ID.
 - **Emoji reactions:** under each photo in the lightbox, visitors tap one of a fixed set
-  (`REACTION_EMOJI` in `data.js`, the same keys as `REACTIONS` in the merryroll API) and
-  see anonymous counts; `POST /reactions` adds or takes one back, and localStorage remembers this
+  (`REACTION_EMOJI` in `data.js`, the same keys as `REACTIONS` in the merryroll API: warm,
+  family-safe, mostly faces, nothing past Emoji 14) and see anonymous counts. Built for phones: the row is
+  always one line, the six `QUICK_REACTIONS` and a "more" chip that opens a bottom sheet with the rest.
+  Counts are corner badges so a chip never widens, and once picker emoji are used on a photo the chip
+  shows the top two and their total (`moreSummary`) instead of growing the row; `POST /reactions` adds or takes one back, and localStorage remembers this
   browser's taps. The row shows only when `GET /card` lists `reactions` (`null` = the family turned
   them off with `reactions: false` in the card JSON; an older API sends nothing) and never on the samples.
 - **Tree zoom and move:** pinch/scroll zooms toward the fingers/cursor, and a two-finger drag

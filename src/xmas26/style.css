@@ -185,19 +185,62 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 #lb-place { font-size: 1.05rem; color: var(--ink); }
 #lb-by { font-size: 0.85rem; color: var(--muted); }
 /* Emoji reactions: tap one, tap it again to take it back. The count shows once anyone has. */
-.lb-react { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px; }
+/* Each count is a badge on the chip's corner rather than text beside the emoji, so a chip is the same width at
+   0 taps as at 120 and the row still fits one line on a 360px phone with every count showing. */
+.lb-react { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
 .react {
-  display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; height: 40px; padding: 0 11px;
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 44px; height: 40px; padding: 0 11px;
   border: 1px solid var(--line); border-radius: 999px; background: var(--glass); cursor: pointer; font-size: 1.1rem; line-height: 1;
   -webkit-tap-highlight-color: transparent; transition: background 0.15s ease, border-color 0.15s ease;
 }
 .react:hover { border-color: rgba(243, 182, 91, 0.6); }
 .react[aria-pressed="true"] { border-color: var(--ember); background: rgba(243, 182, 91, 0.24); }
-.react .n { font-size: 0.82rem; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--ink); }
-.react .n:empty { display: none; }
+.react .n, .rp-item .n {
+  position: absolute; min-width: 1.5em; padding: 0 0.32em; border-radius: 999px; pointer-events: none;
+  background: var(--paper); color: var(--pen); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  font-size: 0.68rem; font-weight: 750; line-height: 1.5; text-align: center; font-variant-numeric: tabular-nums;
+}
+.react .n { top: -8px; right: -6px; }
+.react[aria-pressed="true"] .n, .react.more.mine .n, .rp-item[aria-pressed="true"] .n { background: var(--ember); color: var(--ember-ink); }
+.react .n:empty, .rp-item .n:empty { display: none; }
 .react .e { display: inline-block; }
 .react.pop .e { animation: react-pop 0.38s cubic-bezier(.2, .8, .2, 1); }
 @keyframes react-pop { 45% { transform: scale(1.45) rotate(-8deg); } }
+/* The "more" chip: an add-a-face icon, or once picker emoji are in use on this photo, the top two and their total. */
+.react.more { color: var(--muted); }
+.react.more svg { width: 21px; height: 21px; flex: none; }
+.react.more.used svg { display: none; }
+.react.more .stack { display: inline-flex; }
+.react.more .stack:empty { display: none; }
+.react.more .stack span + span { margin-left: -0.28em; }
+.react.more.mine { border-color: var(--ember); background: rgba(243, 182, 91, 0.24); }
+.react.more.pop .stack { animation: react-pop 0.38s cubic-bezier(.2, .8, .2, 1); }
+/* The picker: a sheet from the bottom of the lightbox, big targets for thumbs, a count badge on each emoji. */
+.react-pick {
+  position: absolute; inset: 0; z-index: 3; display: flex; align-items: flex-end; justify-content: center;
+  padding: 12px max(12px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 12px) max(12px, env(safe-area-inset-left, 0px));
+  background: rgba(0, 0, 0, 0.35); animation: rp-fade 0.2s ease;
+}
+.react-pick[hidden] { display: none; }
+.rp-sheet {
+  width: min(420px, 100%); max-height: 100%; overflow-y: auto; padding: 14px 14px 16px;
+  border: 1px solid var(--line); border-radius: 20px; background: #0b1914; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  animation: rp-up 0.3s cubic-bezier(.2, .8, .2, 1);
+}
+.rp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; padding-left: 4px; }
+.rp-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.35rem; }
+.rp-head p { margin: 2px 0 0; color: var(--muted); font-size: 0.8rem; }
+.rp-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.rp-item {
+  position: relative; aspect-ratio: 1; min-height: 44px; display: grid; place-items: center; padding: 0;
+  border: 1px solid transparent; border-radius: 14px; background: transparent; cursor: pointer; font-size: 1.7rem; line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.rp-item:hover, .rp-item:focus-visible { background: var(--glass); border-color: var(--line); }
+.rp-item[aria-pressed="true"] { border-color: var(--ember); background: rgba(243, 182, 91, 0.24); }
+.rp-item .n { right: 1px; bottom: 1px; }
+@keyframes rp-fade { from { opacity: 0; } }
+@keyframes rp-up { from { transform: translateY(40px); opacity: 0; } }
 .lb-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 6px; }
 .lb-row output { min-width: 5.5rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.9rem; }
 .round {
@@ -323,7 +366,7 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   .lb-polaroid { padding: 10px 10px 0; }
   .lb-polaroid figcaption { font-size: 1.75rem; padding-bottom: 0.45rem; }
   .lb-polaroid figcaption .date { font-size: 1.35rem; }
-  .lb-react { flex-wrap: nowrap; gap: 5px; margin-top: 4px; } /* one row always: a wrap would move them as counts grow */
+  .lb-react { flex-wrap: nowrap; gap: 5px; margin-top: 9px; } /* one row always: six quick chips and "more", whatever the counts */
   .react { min-width: 40px; height: 38px; padding: 0 7px; gap: 3px; }
   .lb-row { margin-top: 2px; }
 }
@@ -338,6 +381,6 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 }
 @media (prefers-reduced-motion: reduce) {
   .lb-polaroid { animation: none; }
-  .react.pop .e { animation: none; }
+  .react.pop .e, .react.more.pop .stack, .react-pick, .rp-sheet { animation: none; }
   .pol, #loading, .mast, .dock, .version { transition: none !important; }
 }
