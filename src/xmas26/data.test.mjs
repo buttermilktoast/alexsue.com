@@ -1,7 +1,7 @@
 // node --test src/xmas26/data.test.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, reactionCountsFromApi, createReactionMemory, postReaction, splitReactions, moreSummary, REACTION_EMOJI, REACTION_NAMES, QUICK_REACTIONS } from './data.js'
+import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, reactionCountsFromApi, createReactionMemory, postReaction, splitReactions, moreSummary, reactionTally, REACTION_EMOJI, REACTION_NAMES, QUICK_REACTIONS } from './data.js'
 
 test('dayOf keeps the calendar day the photo was taken, in its own time zone', () => {
   const d = dayOf('2026-07-12T23:30:00-10:00')
@@ -169,6 +169,13 @@ test('moreSummary: top two picker emoji by taps (ties in picker order) and their
   assert.deepEqual(moreSummary(more, {}), { top: [], total: 0 })
   assert.deepEqual(moreSummary(more, { heart: 9, santa: 1 }), { top: ['santa'], total: 1 })   // quick ones don't count
   assert.deepEqual(moreSummary(more, { cookie: 2, hug: 2, santa: 5, smile: 1 }), { top: ['santa', 'hug'], total: 10 })
+})
+
+test('reactionTally: every emoji in use, most taps first, ties in offered order', () => {
+  const keys = ['heart', 'laugh', 'tree', 'santa']
+  assert.deepEqual(reactionTally(keys, {}), [])
+  assert.deepEqual(reactionTally([], { heart: 3 }), [])   // reactions off: nothing to list
+  assert.deepEqual(reactionTally(keys, { tree: 2, heart: 2, santa: 5, hug: 9 }), [{ k: 'santa', n: 5 }, { k: 'heart', n: 2 }, { k: 'tree', n: 2 }])
 })
 
 test('photosFromApi keeps tidy reaction counts', () => {

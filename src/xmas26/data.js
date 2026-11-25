@@ -208,6 +208,14 @@ export function moreSummary(more, counts = {}, max = 2) {
   return { top, total: used.reduce((sum, k) => sum + counts[k], 0) }
 }
 
+/**
+ * Every emoji in use on one photo with its count, most taps first (ties in the API's order), for the
+ * list under each polaroid in "All photos". Only emoji the page offers, so it's empty when they're off.
+ */
+export function reactionTally(keys, counts = {}) {
+  return keys.map((k, i) => ({ k, i, n: counts[k] ?? 0 })).filter(({ n }) => n > 0).sort((a, b) => b.n - a.n || a.i - b.i).map(({ k, n }) => ({ k, n }))
+}
+
 /** One photo's counts, `{ heart: 3 }`: known emoji with whole counts above zero only. */
 export function reactionCountsFromApi(r) {
   const out = {}

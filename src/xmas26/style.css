@@ -288,6 +288,15 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 .pol .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem; padding: 0.25rem 0.1rem 0.45rem; font-family: var(--hand); color: var(--pen); font-size: 1.4rem; line-height: 1.1; }
 .pol .cap .place { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pol .cap .date { color: #8a5a2b; font-size: 1.15rem; white-space: nowrap; }
+/* Every emoji a photo has had and its count, under the polaroid's place and date. */
+.pol .tally { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -0.15rem; padding: 0 0 8px; }
+.pol .tally:empty { display: none; }
+.pol .tally span {
+  display: inline-flex; align-items: center; gap: 0.25em; padding: 1px 7px 1px 5px; border-radius: 999px;
+  background: rgba(60, 40, 20, 0.08); border: 1px solid transparent; font-size: 0.95rem; line-height: 1.35;
+}
+.pol .tally span.mine { border-color: var(--ember); background: rgba(243, 182, 91, 0.3); }
+.pol .tally b { color: var(--pen); font-size: 0.72rem; font-weight: 750; font-variant-numeric: tabular-nums; }
 
 /* ---- Sheets (waitlist, name) ---- */
 .sheet {

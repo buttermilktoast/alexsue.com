@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, createReactionMemory, postReaction, splitReactions, moreSummary, REACTION_EMOJI, REACTION_NAMES } from "./data.js";
+import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, createReactionMemory, postReaction, splitReactions, moreSummary, reactionTally, REACTION_EMOJI, REACTION_NAMES } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
 // A personal link (?to=auntiesu) greets that person and shows the family's note to them.
@@ -568,7 +568,7 @@ async function toggleReaction(k) {
   // Show it at once; the API's counts replace the guess, and a failure puts it back.
   reacted.set(p.id, k, on);
   p.reactions = { ...before, [k]: Math.max(0, (before[k] ?? 0) + (on ? 1 : -1)) };
-  renderReactions(p, on ? k : null); fitLightbox();
+  renderReactions(p, on ? k : null); fitLightbox(); showTally(photos.indexOf(p));
   try {
     p.reactions = await postReaction({ pickId: p.id, emoji: k, on, to: TO });
   } catch (e) {
@@ -576,6 +576,7 @@ async function toggleReaction(k) {
     reacted.set(p.id, k, !on); p.reactions = before;
   } finally {
     reactBusy.delete(busy);
+    showTally(photos.indexOf(p));
     if (photos[lbIndex] === p) { renderReactions(p); fitLightbox(); }
   }
 }
@@ -775,13 +776,30 @@ function updateNewPhotoCount() {
 function markPhotoViewed(i) {
   const photo = photos[i];
   if (!photoHistory.markViewed(photo)) return;
-  const { button, badge, label } = collagePhotos[i];
-  badge.hidden = true;
-  button.setAttribute("aria-label", label);
+  collagePhotos[i].badge.hidden = true;
+  labelCollage(i);
   const { texture } = pols[i];
   polaroidCanvas(photo, texture.image);
   texture.needsUpdate = true;
   updateNewPhotoCount();
+}
+
+// Under each polaroid in "All photos": every emoji it has had, with its count, most first; this
+// browser's own taps are marked as in the lightbox. Kept current as reactions are added or taken back.
+function showTally(i) {
+  const c = collagePhotos[i], p = photos[i];
+  if (!c || !p) return;
+  c.tally.replaceChildren(...reactionTally(reactionKeys, p.reactions).map(({ k, n }) => {
+    const s = document.createElement("span"); s.classList.toggle("mine", reacted.has(p.id, k));
+    s.append(REACTION_EMOJI[k], Object.assign(document.createElement("b"), { textContent: String(n) }));
+    return s;
+  }));
+  labelCollage(i);
+}
+function labelCollage(i) {
+  const { button, badge, label } = collagePhotos[i];
+  const r = reactionTally(reactionKeys, photos[i].reactions).map(({ k, n }) => `${REACTION_NAMES[k]} ${n}`).join(", ");
+  button.setAttribute("aria-label", `${badge.hidden ? "" : "New. "}${label}${r ? `. Reactions: ${r}` : ""}`);
 }
 
 function buildCollage() {
@@ -800,11 +818,11 @@ function buildCollage() {
       b.style.setProperty("--rot", `${((rng(hash(p.id))() - 0.5) * 4).toFixed(2)}deg`);
       const isNew = photoHistory.isNew(p);
       const label = [p.caption || (p.video ? "Video" : "Photo"), p.caption && p.video ? "video" : "", p.place, fmtDate(p)].filter(Boolean).join(", ");
-      b.setAttribute("aria-label", isNew ? `New. ${label}` : label);
       const badge = document.createElement("span"); badge.className = "new-photo-badge";
       badge.textContent = "New"; badge.hidden = !isNew; badge.setAttribute("aria-hidden", "true");
       b.append(badge);
-      collagePhotos[i] = { button: b, badge, label };
+      const tally = document.createElement("span"); tally.className = "tally"; tally.setAttribute("aria-hidden", "true");
+      collagePhotos[i] = { button: b, badge, label, tally };
       const img = document.createElement("img"); img.loading = "lazy"; img.alt = ""; img.src = p.thumb || fullSrc(p);
       if (p.video) {
         const badge = document.createElement("span"); badge.className = "play"; badge.setAttribute("aria-hidden", "true");
@@ -813,7 +831,8 @@ function buildCollage() {
       const cap = document.createElement("span"); cap.className = "cap";
       const pl = document.createElement("span"); pl.className = "place"; pl.textContent = p.place || "";
       const dt = document.createElement("span"); dt.className = "date"; dt.textContent = fmtDate(p);
-      cap.append(pl, dt); b.append(img, cap);
+      cap.append(pl, dt); b.append(img, cap, tally);
+      showTally(i);
       b.addEventListener("click", () => openLightbox(i));
       grid.append(b);
     });

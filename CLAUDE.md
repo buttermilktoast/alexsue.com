@@ -128,7 +128,8 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   no one will know it's you" shows until this browser's first reaction (`createReactionMemory().any()`);
   "Added by" is commented out (index.html and main.js) to leave it the room; `POST /reactions` adds or takes one back, and localStorage remembers this
   browser's taps. The row shows only when `GET /card` lists `reactions` (`null` = the family turned
-  them off with `reactions: false` in the card JSON; an older API sends nothing) and never on the samples.
+  them off with `reactions: false` in the card JSON; an older API sends nothing) and never on the samples. In "All photos", each polaroid lists every emoji it has had with its count,
+  most first (`reactionTally`), and this browser's own are marked.
 - **Tree zoom and move:** pinch/scroll zooms toward the fingers/cursor, and a two-finger drag
   (right- or shift-drag with a mouse) slides up and down the tree. `keepOnTree` keeps the view on
   the trunk (so turning still spins the tree in place), between the card and the star, and sets
