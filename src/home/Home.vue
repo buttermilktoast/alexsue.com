@@ -11,6 +11,9 @@ const themes = [
 const filters = [
   ['All feeds', 'grid'], ['News', 'news'], ['Tech', 'tech'], ['Games', 'games'], ['Comics', 'comic'],
 ]
+// Production reads the snapshot the scheduled Lambda keeps in S3 (infra/feeds/);
+// local development reads the one scripts/update-home-feeds.py writes.
+const feedsUrl = import.meta.env.VITE_FEEDS_URL || './feeds.json'
 const sourcesById = new Map(sources.map(source => [source.id, source]))
 const defaults = sources.filter(source => source.enabled).map(source => source.id)
 const settingsKey = 'daily-brief.settings.v1'
@@ -92,7 +95,7 @@ async function refresh() {
   loading.value = true
   lastChecked = Date.now()
   try {
-    const response = await fetch('./feeds.json', { cache: 'no-store', signal: AbortSignal.timeout(10000) })
+    const response = await fetch(feedsUrl, { cache: 'no-store', signal: AbortSignal.timeout(10000) })
     if (!response.ok) throw new Error('Feed snapshot unavailable')
     const data = await response.json()
     if (!data.feeds || typeof data.feeds !== 'object') throw new Error('Invalid feed snapshot')
@@ -265,7 +268,8 @@ onUnmounted(() => {
             <span class="source-mark" :style="{ '--mark-color': source.color }" aria-hidden="true">{{ source.mark }}</span>
             <div class="source-name">
               <h3><a :href="source.site" target="_blank" rel="noopener noreferrer">{{ source.name }}</a></h3>
-              <p>{{ source.id === 'foxtrot' ? 'Sunday comic' : source.category }}</p>
+              <p>{{ source.id === 'foxtrot' ? 'Sunday comic' : source.category }}<span v-if="snapshot?.feeds[source.id]?.via" class="via"
+                :title="'These headlines come from a ' + snapshot.feeds[source.id].via + ' search, not ' + source.name + '’s own feed'"> · via {{ snapshot.feeds[source.id].via }}</span></p>
             </div>
             <div class="card-actions" data-card-actions>
               <button class="icon-button grip" type="button" :aria-label="'Arrange ' + source.name"
@@ -315,7 +319,6 @@ onUnmounted(() => {
             </ul>
             <div class="card-footer">
               <span v-if="snapshot?.feeds[source.id]?.stale">Last available headlines</span>
-              <span v-else-if="snapshot?.feeds[source.id]?.via">Via {{ snapshot.feeds[source.id].via }}</span>
               <button v-if="itemsFor(source).length > 4" type="button" @click="toggleExpanded(source.id)">{{ expandedSources.has(source.id) ? 'Show fewer' : 'More headlines' }}</button>
               <a v-else :href="source.site" target="_blank" rel="noopener noreferrer">Visit source <Icon name="link" /></a>
             </div>

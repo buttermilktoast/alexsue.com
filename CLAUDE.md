@@ -15,6 +15,7 @@ node --test src/composables/useLiveStatus.test.mjs   # front-end pure logic
 node --test src/composables/useSky.test.mjs          # solar position and sky palette
 node --test infra/lambda/status.test.mjs             # Lambda status computation
 node --test src/xmas26/data.test.mjs                 # the family card's data loading
+python3 -m unittest discover -s infra/feeds          # /home/ headline collection
 node --test --test-name-pattern='wall-clock slots' src/composables/useLiveStatus.test.mjs   # single test
 ```
 
@@ -159,6 +160,19 @@ initializer with the dashboard. The design and the API live in the **merryroll**
 - "Get the app" posts to the API's `POST /waitlist`. The API's CORS list allows
   `https://alexsue.com` and `http://localhost:5173` only, so test locally on
   5173 (`npm run dev`, or `npx vite preview --port 5173`).
+
+### The start page (`home/`)
+
+`alexsue.com/home/` (`src/home/`) is an RSS start page. Its headlines come from
+one public S3 object that a Lambda (`infra/feeds/`) refreshes every 30 minutes on
+an EventBridge Scheduler schedule — not from the site build, and not from a
+GitHub Actions cron, which GitHub ran only a few times a day. The page reads
+`VITE_FEEDS_URL` (a repository variable), falling back to `./feeds.json` for
+local development (`python3 scripts/update-home-feeds.py`, which runs the same
+`home_feeds.py`). `src/home/sources.json` is packaged into the Lambda, so
+**re-run `./infra/feeds/deploy.sh` after changing it.** A source fetched via the
+Google News fallback carries `via` and the card says so. `infra/feeds/README.md`
+is the reference.
 
 ### Deployment
 

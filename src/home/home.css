@@ -153,6 +153,7 @@ h2 { font: 400 1.65rem/1.2 var(--serif); letter-spacing: -.035em; }
 .source-name h3 { font-size: 1.04rem; font-weight: 790; line-height: 1.15; letter-spacing: -.023em; }
 .source-name h3 a:hover { color: var(--accent); }
 .source-name p { font-size: .8125rem; color: var(--muted); margin-top: 3px; }
+.source-name .via { font-style: italic; }
 .card-actions { position: relative; }
 .grip { background: transparent; border-color: transparent; touch-action: none; cursor: grab; }
 .grip:active { cursor: grabbing; }

@@ -51,10 +51,12 @@ where these are unset, it shows `version development`.
 
 ## The start page
 
-`alexsue.com/home/` shows RSS headlines and the Sunday FoxTrot strip. GitHub Pages
-refreshes the snapshots on deploy and is scheduled to refresh hourly. If a publisher fails to
-respond, the build keeps its last available headlines. The feed catalog is in
-[`src/home/sources.json`](src/home/sources.json). To populate it during local
+`alexsue.com/home/` shows RSS headlines and the Sunday FoxTrot strip. A scheduled
+AWS Lambda refreshes them every 30 minutes into a public S3 object that the page
+reads (`VITE_FEEDS_URL`); if a publisher fails to respond, it keeps that
+source's last available headlines. See [`infra/feeds/README.md`](infra/feeds/README.md).
+The feed catalog is in [`src/home/sources.json`](src/home/sources.json); after
+changing it, re-run `./infra/feeds/deploy.sh`. To populate the page during local
 development, run `python3 scripts/update-home-feeds.py` from the checkout.
 
 ## The family card

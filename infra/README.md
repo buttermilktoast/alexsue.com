@@ -1,5 +1,7 @@
 # Live status pipeline
 
+(The /home/ headline pipeline is separate: see [`feeds/README.md`](feeds/README.md).)
+
 The phone pushes a health sample to a Lambda; the Lambda folds it into a
 running baseline and writes one JSON object to S3; the site polls that object
 every fifteen minutes. There is no history and no database — the object
