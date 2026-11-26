@@ -233,7 +233,9 @@ const tanHalf = () => Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
 let chromeHidden = false;
 function framing() {
   const w = innerWidth, h = innerHeight, aspect = w / h, narrow = aspect < 0.9;
-  const mast = document.querySelector(".mast").getBoundingClientRect(), dock = $("dock").getBoundingClientRect();
+  // The months are the dock's top row, or its only bottom row on a phone on its side (the tools go
+  // to the right there), so they mark where the tree has to stop.
+  const mast = document.querySelector(".mast").getBoundingClientRect(), dock = $("months").getBoundingClientRect();
   const topRes = chromeHidden ? 0.04 : narrow ? Math.min(0.4, (mast.bottom + 8) / h) : 0.03;
   const botRes = chromeHidden ? 0.04 : Math.min(0.3, (h - dock.top + 6) / h);
   const usable = Math.max(0.4, 1 - topRes - botRes);
@@ -243,14 +245,16 @@ function framing() {
   const centerFromTop = (topRes + (1 - botRes)) / 2;
   return { dist, targetY: (TOP_Y + BOTTOM_Y) / 2 + (centerFromTop - 0.5) * visH, polar: 1.42 };
 }
-function place(targetY, radius, polar, azim) {
-  controls.target.set(0, targetY, 0);
-  camera.position.set(radius * Math.sin(polar) * Math.sin(azim), targetY + radius * Math.cos(polar), radius * Math.sin(polar) * Math.cos(azim));
+// `side` slides the view to the camera's right (card view on a phone on its side, so the card sits
+// clear of the tools column); everywhere else it's 0 and the view stays on the trunk.
+function place(targetY, radius, polar, azim, side = 0) {
+  const t = controls.target.set(side * Math.cos(azim), targetY, -side * Math.sin(azim));
+  camera.position.set(t.x + radius * Math.sin(polar) * Math.sin(azim), targetY + radius * Math.cos(polar), t.z + radius * Math.sin(polar) * Math.cos(azim));
   camera.lookAt(controls.target);
 }
 function current() {
-  const off = camera.position.clone().sub(controls.target), r = off.length();
-  return { targetY: controls.target.y, radius: r, polar: Math.acos(THREE.MathUtils.clamp(off.y / r, -1, 1)), azim: Math.atan2(off.x, off.z) };
+  const t = controls.target, off = camera.position.clone().sub(t), r = off.length(), azim = Math.atan2(off.x, off.z);
+  return { targetY: t.y, radius: r, polar: Math.acos(THREE.MathUtils.clamp(off.y / r, -1, 1)), azim, side: t.x * Math.cos(azim) - t.z * Math.sin(azim) };
 }
 
 const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
@@ -270,7 +274,8 @@ async function flyTo(to, dur = 1.2) {
   const from = current();
   let dA = to.azim - from.azim; dA = ((((dA + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
   flying++; controls.enabled = false;
-  await tween(dur, (k) => place(from.targetY + (to.targetY - from.targetY) * k, from.radius + (to.radius - from.radius) * k, from.polar + (to.polar - from.polar) * k, from.azim + dA * k));
+  const side = to.side || 0;
+  await tween(dur, (k) => place(from.targetY + (to.targetY - from.targetY) * k, from.radius + (to.radius - from.radius) * k, from.polar + (to.polar - from.polar) * k, from.azim + dA * k, from.side + (side - from.side) * k));
   if (--flying === 0) controls.enabled = introDone;
 }
 function flyHome(dur = 1.1) { const f = framing(); return flyTo({ ...f, radius: f.dist, azim: current().azim }, dur); }
@@ -851,12 +856,19 @@ $("collage-close").addEventListener("click", () => { $("collage").hidden = true;
 
 // Fly in until the card fills the screen: 92% of the width on a phone, 74% of the height on a wide
 // screen, facing whichever side is nearer the current view (showCard overrides that with the front).
+// A phone on its side hides the masthead and months in card view (style.css), so the card gets 86%
+// of the height, in the room left of the tools column: `side` is how far right of the card to look.
+const SIDEWAYS = matchMedia("(orientation: landscape) and (max-height: 500px)");
+// The share of the screen's width the tools column takes, with a gap, in card view on a phone on its side.
+function cardReserve() {
+  return SIDEWAYS.matches ? clamp01((innerWidth - $("tools").getBoundingClientRect().left + 8) / innerWidth) : 0;
+}
 function cardView() {
-  const { w, h } = cardMesh.userData, aspect = innerWidth / innerHeight, c = current();
-  const radius = Math.max((w / 2) / (tanHalf() * aspect * 0.92), (h / 2) / (tanHalf() * 0.74), TREE_MIN_DIST);
+  const { w, h } = cardMesh.userData, aspect = innerWidth / innerHeight, c = current(), res = cardReserve();
+  const radius = Math.max((w / 2) / (tanHalf() * aspect * (1 - res) * 0.92), (h / 2) / (tanHalf() * (SIDEWAYS.matches ? 0.86 : 0.74)), TREE_MIN_DIST);
   const off = (a) => Math.abs(((((a - c.azim + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI);
   const front = card.rotation.y, azim = off(front) <= off(front + Math.PI) ? front : front + Math.PI;
-  return { targetY: card.userData.baseY, radius, polar: 1.53, azim };
+  return { targetY: card.userData.baseY, radius, polar: 1.53, azim, side: radius * tanHalf() * aspect * res };
 }
 // Card view: the dock's card button reads "Flip it" and "Back to the tree" appears, and the camera
 // holds still on the card instead of drifting back into the slow turn.
@@ -866,6 +878,7 @@ function setCardMode(on) {
   cardMode = on;
   $("btn-flip-label").textContent = on ? "Flip it" : "See our card";
   $("btn-tree").hidden = !on;
+  $("app").classList.toggle("card-mode", on);
   // Zooming in on the card: one finger pans once zoomed in (cardGestures).
   controls.minDistance = on ? cardView().radius / CARD_ZOOM : TREE_MIN_DIST;
   if (on && card) card.position.y = card.userData.baseY;   // hold still to be read, no bobbing
@@ -1005,18 +1018,21 @@ function cardGestures() {
 const cardRight = new THREE.Vector3(), shift = new THREE.Vector3();
 /**
  * Keeps the card filling the screen like a photo viewer: a pan stops where the card's edge meets the
- * screen's edge, and zooming back out slides it back to the middle.
+ * screen's edge, and zooming back out slides it back to the middle. On a phone on its side, "the
+ * screen" is the part left of the tools column, so the middle is that part's middle.
  */
 function keepOnCard() {
   if (!cardMode || flying || !cardMesh) return;
-  const { w, h } = cardMesh.userData, ry = card.rotation.y, t = controls.target;
-  const halfH = current().radius * tanHalf(), halfW = halfH * camera.aspect;   // the part of the card on screen
+  const { w, h } = cardMesh.userData, t = controls.target, c = current(), res = cardReserve();
+  const halfH = c.radius * tanHalf(), halfW = halfH * camera.aspect * (1 - res);   // the part of the card in view
+  const mid = halfH * camera.aspect * res;   // how far right of the card's centre the view's centre sits when it's fitted
   const roomU = Math.max(0, w / 2 - halfW), roomV = Math.max(0, h / 2 - halfH);
-  cardRight.set(Math.cos(ry), 0, -Math.sin(ry));
-  const u = t.x * cardRight.x + t.z * cardRight.z, v = t.y - card.userData.baseY;   // the card is centred on the y axis
-  const du = THREE.MathUtils.clamp(u, -roomU, roomU) - u, dv = THREE.MathUtils.clamp(v, -roomV, roomV) - v;
-  if (!du && !dv) return;
-  shift.copy(cardRight).multiplyScalar(du); shift.y += dv;
+  cardRight.set(Math.cos(c.azim), 0, -Math.sin(c.azim));   // the camera's right; the card is centred on the y axis
+  const v = t.y - card.userData.baseY, u = THREE.MathUtils.clamp(c.side, mid - roomU, mid + roomU);
+  const dv = THREE.MathUtils.clamp(v, -roomV, roomV) - v;
+  // Back onto the line through the card, at the clamped distance to the side (drops any drift toward or away from it).
+  shift.copy(cardRight).multiplyScalar(u).sub(t).setY(dv);
+  if (Math.abs(shift.x) + Math.abs(shift.y) + Math.abs(shift.z) < 1e-9) return;
   t.add(shift); camera.position.add(shift);
 }
 /**
@@ -1271,7 +1287,7 @@ function resize() {
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); initSnow();
   if (introDone && !flying && !overlayOpen()) {
     const v = cardMode ? cardView() : { ...framing(), radius: framing().dist, azim: current().azim };
-    place(v.targetY, v.radius, v.polar, v.azim);
+    place(v.targetY, v.radius, v.polar, v.azim, v.side);
   }
   stripFade($("months")); stripFade($("tools"));
   fitLightbox();

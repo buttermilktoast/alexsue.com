@@ -143,6 +143,12 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   Safari's toolbars hidden, which pushed the ✕ and the arrows off a phone screen. A phone on its side
   puts them beside the photo instead. The meta is pinned to the bottom (or the right, on its side) and the
   photo floats in the room left, so the reactions and arrows don't move between tall and wide photos.
+- **A phone on its side** (`orientation: landscape` and `max-height: 500px`, `SIDEWAYS` in `main.js`): the
+  height is what's short, so nothing stacks under the tree. The compact masthead sits on the left, the tools
+  go in a column on the right, and only the months run along the bottom; `framing()` measures the months
+  (not the dock) so the tree takes the height. In card view the masthead and months step aside, and the card
+  fits the room left of the tools: `cardView()` returns a `side` offset that `place()`/`flyTo` carry and
+  `keepOnCard` pans around.
 - **Lightbox gestures:** one pointer handler on the whole lightbox (`touch-action: none`, so a pinch never
   zooms the page). A sideways drag carries the photo with the finger and commits past a quarter of its
   width or on a flick; a drag down closes it; pinch, double tap or the wheel zooms the photo inside its

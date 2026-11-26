@@ -410,8 +410,32 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
   .react { min-width: 40px; height: 38px; padding: 0 7px; gap: 3px; }
   .lb-row { margin-top: 2px; }
 }
-/* A phone on its side: too short for a photo with everything under it, so the words and buttons go beside it. */
+/* A phone on its side: too short for anything stacked under the tree or a photo, but wide, with
+   room to spare on either side. So the words and buttons go beside them. On the tree: the phone's
+   compact masthead on the left, the tools in a column on the right, and only the months along the
+   bottom (framing() measures the months, so the tree takes the height the tools gave up). */
 @media (orientation: landscape) and (max-height: 500px) {
+  .mast { top: calc(env(safe-area-inset-top, 0px) + 12px); max-width: min(300px, 32%); }
+  .eyebrow { font-size: 1.4rem; }
+  .mast h1 { font-size: 1.55rem; text-wrap: nowrap; }
+  .mast h1 .year { display: inline; font-size: 1em; line-height: 1; letter-spacing: 0; color: var(--ember); }
+  .lede { display: none; }
+  .hint { margin-top: 0.35rem; font-size: 0.74rem; }
+  .draft { margin-top: 0.45rem; padding: 0.22rem 0.55rem; font-size: 0.62rem; }
+  .dock { top: 0; justify-content: flex-end; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
+  .months button { min-width: 2.3rem; padding: 0.5rem 0.4rem; }
+  .tools {
+    position: absolute; right: max(16px, env(safe-area-inset-right, 0px));
+    top: calc(env(safe-area-inset-top, 0px) + 64px); bottom: calc(env(safe-area-inset-bottom, 0px) + 66px); /* under the ✕ corner, over the months */
+    flex-direction: column; flex-wrap: nowrap; justify-content: safe center; align-items: stretch; gap: 6px;
+    margin: 0; padding: 0; overflow: hidden auto; scrollbar-width: none; mask-image: none;
+    pointer-events: none; /* the column is taller than its buttons: drags beside them still turn the tree */
+  }
+  .tools::-webkit-scrollbar { display: none; }
+  .tools > * { pointer-events: auto; }
+  .pill { flex: none; min-height: 36px; padding: 0 0.8rem; font-size: 0.8rem; white-space: nowrap; }
+  /* Card view: the card takes the height, so the masthead and months (which only work on the tree) step aside. */
+  #app.card-mode .mast, #app.card-mode .months { opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s 0.3s; }
   .lightbox {
     flex-direction: row; gap: 20px;
     padding-top: calc(env(safe-area-inset-top, 0px) + 12px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
