@@ -52,10 +52,13 @@ function polaroidCanvas(p, cv = document.createElement("canvas")) {
   drawCover(c, p.source, pad, pad, sz, sz);
   c.strokeStyle = "rgba(0,0,0,0.12)"; c.strokeRect(pad + 0.5, pad + 0.5, sz - 1, sz - 1);
   if (p.video) drawPlay(c, pad + sz / 2, pad + sz / 2, 30);
+  // Big enough to read at tree scale; the cream ring keeps it off a dark photo, the dark one off a light one.
   if (photoHistory.isNew(p)) {
-    c.beginPath(); c.arc(pad + 26, pad + 26, 17, 0, Math.PI * 2);
+    c.beginPath(); c.arc(pad + 30, pad + 30, 25, 0, Math.PI * 2);
     c.fillStyle = "#f3b65b"; c.fill();
-    c.strokeStyle = "#2a241c"; c.lineWidth = 5; c.stroke();
+    c.strokeStyle = "#2a241c"; c.lineWidth = 6; c.stroke();
+    c.beginPath(); c.arc(pad + 30, pad + 30, 30, 0, Math.PI * 2);
+    c.strokeStyle = "#faf6ee"; c.lineWidth = 4; c.stroke();
   }
   const mid = pad + sz + (PH - pad - sz) / 2 + 2, month = MONTHS[dateOf(p).getMonth()];
   c.textBaseline = "middle"; c.fillStyle = "#8a5a2b"; c.textAlign = "right"; c.font = `26px ${HAND}`; c.fillText(month, PW - pad - 2, mid + 2);
@@ -112,6 +115,9 @@ const glowTex = (() => {
   return new THREE.CanvasTexture(cv);
 })();
 
+// A new photo glows gold behind its polaroid, so it can be found from across the tree; the dot on the
+// polaroid only reads up close. One material, so the pulse is one opacity change a frame.
+let newGlow = null;
 let photos = [], pols = [], tree = null, garland = null, star = null, card = null, cardMesh = null;
 const paperMat = new THREE.MeshLambertMaterial({ color: 0xe9e2d4 });
 
@@ -126,6 +132,7 @@ function buildTree(list) {
   if (tree) { scene.remove(tree); disposeTree(tree); }
   tree = new THREE.Group(); scene.add(tree);
   pols = [];
+  newGlow = new THREE.SpriteMaterial({ map: glowTex, color: 0xffb84d, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 });
   const N = list.length;
   // Polaroids shrink from 30 photos and bottom out at TREE_PHOTOS.max; past that the tree only gets denser.
   const size = THREE.MathUtils.clamp(1 - (0.45 * (N - 30)) / (TREE_PHOTOS.max - 30), 0.55, 1);
@@ -157,8 +164,14 @@ function buildTree(list) {
     const scale = size * (1 - 0.3 * t);
     mesh.scale.setScalar(scale);
     mesh.userData.index = i;
+    let glow = null;
+    if (photoHistory.isNew(photo)) {
+      glow = new THREE.Sprite(newGlow);   // a child, so it follows the polaroid through the intro and the boosts
+      glow.position.z = -0.03; glow.scale.set(1.15, 1.25, 1);
+      mesh.add(glow);
+    }
     tree.add(mesh);
-    pols.push({ mesh, photo, texture: tex, theta: p.th, y: p.y, t, home: { pos: mesh.position.clone(), quat: mesh.quaternion.clone(), scale }, boost: 1, delay: 1.05 + (i / Math.max(1, N - 1)) * 2.3 });
+    pols.push({ mesh, photo, texture: tex, glow, theta: p.th, y: p.y, t, home: { pos: mesh.position.clone(), quat: mesh.quaternion.clone(), scale }, boost: 1, delay: 1.05 + (i / Math.max(1, N - 1)) * 2.3 });
   });
 
   // Fairy lights on their own strand, half a turn-pitch above the photos.
@@ -790,7 +803,8 @@ function markPhotoViewed(i) {
   if (!photoHistory.markViewed(photo)) return;
   collagePhotos[i].badge.hidden = true;
   labelCollage(i);
-  const { texture } = pols[i];
+  const { texture, glow } = pols[i];
+  if (glow) { glow.removeFromParent(); pols[i].glow = null; }
   polaroidCanvas(photo, texture.image);
   texture.needsUpdate = true;
   updateNewPhotoCount();
@@ -1278,6 +1292,7 @@ function animateLights(t, e) {
 }
 
 function animatePolaroids(t) {
+  if (newGlow) newGlow.opacity = REDUCE ? 1 : 0.8 + Math.sin(t * 2.4) * 0.2;
   if (!introDone) return;
   pols.forEach((p, i) => {
     const goal = (i === hover ? 1.1 : 1) * (monthLit.has(i) ? 1.22 + (REDUCE ? 0 : Math.sin(t * 3) * 0.03) : 1) * (i === lbIndex ? 1.15 : 1);
