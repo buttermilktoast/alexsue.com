@@ -199,13 +199,17 @@ export function splitReactions(keys) {
 }
 
 /**
- * What the "more" chip shows for one photo, so the row keeps one width on a phone however many
- * emoji are in use: the (up to) two picker emoji with the most taps, and all the picker's taps added up.
+ * The row under one photo, which keeps one width on a phone however many emoji are in use. Picker
+ * emoji that have taps (most first, ties in picker order) take the places of quick ones with none,
+ * the rightmost first, so heart and laugh stay put. `rest` is the picker's taps that found no place;
+ * the "more" chip shows them as its badge and keeps its add-a-face icon, so it still reads as "more".
  */
-export function moreSummary(more, counts = {}, max = 2) {
-  const used = more.filter((k) => counts[k] > 0)
-  const top = used.map((k, i) => ({ k, i, n: counts[k] })).sort((a, b) => b.n - a.n || a.i - b.i).slice(0, max).map(({ k }) => k)
-  return { top, total: used.reduce((sum, k) => sum + counts[k], 0) }
+export function reactionRow(quick, more, counts = {}) {
+  const used = more.map((k, i) => ({ k, i, n: counts[k] ?? 0 })).filter(({ n }) => n > 0).sort((a, b) => b.n - a.n || a.i - b.i)
+  const free = quick.map((k, i) => i).filter((i) => !(counts[quick[i]] > 0))
+  const placed = used.slice(0, free.length), keys = [...quick]
+  free.slice(free.length - placed.length).forEach((slot, j) => { keys[slot] = placed[j].k })
+  return { keys, rest: used.slice(placed.length).reduce((sum, { n }) => sum + n, 0) }
 }
 
 /**

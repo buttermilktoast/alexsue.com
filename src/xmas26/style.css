@@ -232,12 +232,8 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 /* The "more" chip: an add-a-face icon, or once picker emoji are in use on this photo, the top two and their total. */
 .react.more { color: var(--muted); }
 .react.more svg { width: 21px; height: 21px; flex: none; }
-.react.more.used svg { display: none; }
-.react.more .stack { display: inline-flex; }
-.react.more .stack:empty { display: none; }
-.react.more .stack span + span { margin-left: -0.28em; }
 .react.more.mine { border-color: var(--ember); background: rgba(243, 182, 91, 0.24); }
-.react.more.pop .stack { animation: react-pop 0.38s cubic-bezier(.2, .8, .2, 1); }
+.react.more.pop svg { animation: react-pop 0.38s cubic-bezier(.2, .8, .2, 1); }
 /* The picker: a sheet from the bottom of the lightbox, big targets for thumbs, a count badge on each emoji. */
 .react-pick {
   position: absolute; inset: 0; z-index: 3; display: flex; align-items: flex-end; justify-content: center;
@@ -447,7 +443,7 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 }
 @media (prefers-reduced-motion: reduce) {
   .lb-polaroid { animation: none; }
-  .react.pop .e, .react.more.pop .stack, .react-pick, .rp-sheet { animation: none; }
+  .react.pop .e, .react.more.pop svg, .react-pick, .rp-sheet { animation: none; }
   .coach-ring::after, .lb-step.beckon { animation: none; }
   .pol, #loading, .mast, .dock, .version { transition: none !important; }
 }

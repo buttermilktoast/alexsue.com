@@ -1,7 +1,7 @@
 // node --test src/xmas26/data.test.mjs
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, reactionCountsFromApi, createReactionMemory, postReaction, splitReactions, moreSummary, reactionTally, REACTION_EMOJI, REACTION_NAMES, QUICK_REACTIONS } from './data.js'
+import { dayOf, photosFromApi, createPhotoHistory, cardFaces, previewLabel, fetchCard, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, reactionCountsFromApi, createReactionMemory, postReaction, splitReactions, reactionRow, reactionTally, REACTION_EMOJI, REACTION_NAMES, QUICK_REACTIONS } from './data.js'
 
 test('dayOf keeps the calendar day the photo was taken, in its own time zone', () => {
   const d = dayOf('2026-07-12T23:30:00-10:00')
@@ -164,11 +164,16 @@ test('splitReactions: the quick row, then the picker, in the API order', () => {
   assert.deepEqual(splitReactions(['heart', 'laugh']), { quick: ['heart', 'laugh'], more: [] })   // an API with no extras: no picker
 })
 
-test('moreSummary: top two picker emoji by taps (ties in picker order) and their total', () => {
-  const more = ['smile', 'hug', 'santa', 'cookie']
-  assert.deepEqual(moreSummary(more, {}), { top: [], total: 0 })
-  assert.deepEqual(moreSummary(more, { heart: 9, santa: 1 }), { top: ['santa'], total: 1 })   // quick ones don't count
-  assert.deepEqual(moreSummary(more, { cookie: 2, hug: 2, santa: 5, smile: 1 }), { top: ['santa', 'hug'], total: 10 })
+test('reactionRow: used picker emoji take the rightmost untapped quick places, most taps first', () => {
+  const quick = ['heart', 'laugh', 'love', 'aww', 'clap', 'tree'], more = ['smile', 'hug', 'santa', 'cookie']
+  assert.deepEqual(reactionRow(quick, more, {}), { keys: quick, rest: 0 })
+  assert.deepEqual(reactionRow(quick, more, { heart: 9, santa: 1 }), { keys: ['heart', 'laugh', 'love', 'aww', 'clap', 'santa'], rest: 0 })
+  assert.deepEqual(reactionRow(quick, more, { tree: 1, cookie: 2, hug: 2, santa: 5 }),
+    { keys: ['heart', 'laugh', 'santa', 'hug', 'cookie', 'tree'], rest: 0 })   // a tapped quick one keeps its place
+  // Every quick place but one tapped: the top picker emoji gets it, the others' taps go on the chip.
+  const busy = { heart: 1, laugh: 1, love: 1, aww: 1, clap: 1 }
+  assert.deepEqual(reactionRow(quick, more, { ...busy, santa: 5, hug: 2, smile: 1 }), { keys: ['heart', 'laugh', 'love', 'aww', 'clap', 'santa'], rest: 3 })
+  assert.deepEqual(reactionRow(quick, more, { ...busy, tree: 1, hug: 2 }), { keys: quick, rest: 2 })   // no room at all
 })
 
 test('reactionTally: every emoji in use, most taps first, ties in offered order', () => {

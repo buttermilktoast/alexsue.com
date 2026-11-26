@@ -6,7 +6,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import "./style.css";
 import { initAnalytics } from "../analytics.js";
-import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, createReactionMemory, postReaction, splitReactions, moreSummary, reactionTally, REACTION_EMOJI, REACTION_NAMES } from "./data.js";
+import { API_BASE, YEAR, TREE_PHOTOS, fetchCard, photosFromApi, createPhotoHistory, cardFaces, dayOf, previewLabel, cleanName, codeFromSearch, recipientFromApi, withoutCode, durationText, reactionsFromApi, createReactionMemory, postReaction, splitReactions, reactionRow, reactionTally, REACTION_EMOJI, REACTION_NAMES } from "./data.js";
 import { HAND, DISPLAY, BODY, SAMPLE_PHOTOS, paintSample, sampleCard, rng, hash, lin, drawCover, sizeOf } from "./samples.js";
 
 // A personal link (?to=auntiesu) greets that person and shows the family's note to them.
@@ -499,10 +499,11 @@ $("lb-img").addEventListener("load", fitLightbox);   // a sample photo's shape i
 // family turns reactions off, or for the sample photos), and the row stays hidden without them.
 //
 // Most visitors are on a phone, so the row is one line that never grows: the six quick emoji and a
-// "more" chip. The chip opens a sheet with the rest; once any of those are used on a photo, it shows
-// the top two and their total instead of its add-a-face icon, and the sheet has each one's count.
+// "more" chip. The chip opens a sheet with the rest; once any of those are used on a photo, they take
+// the places of quick emoji nobody has tapped (`reactionRow`). The chip always keeps its add-a-face
+// icon, so it still says there's more; picker taps with no place left show as its badge.
 // ---------------------------------------------------------------------------------------------
-let reactionKeys = [], moreKeys = [];
+let reactionKeys = [], quickKeys = [], moreKeys = [];
 const reacted = createReactionMemory(), reactBusy = new Set();
 const ADD_FACE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20.5 12A8.5 8.5 0 1 1 12 3.5"/><path d="M8.5 14.5q3.5 3.5 7 0"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/><path d="M19.5 1.5v6M16.5 4.5h6"/></svg>`;
 function reactButton(k, className, onClick) {
@@ -514,15 +515,16 @@ function reactButton(k, className, onClick) {
   b.addEventListener("animationend", () => b.classList.remove("pop"));
   return b;
 }
+const rowButton = (k) => reactButton(k, "react", () => toggleReaction(k));
 function buildReactions(keys) {
   const { quick, more } = splitReactions(keys);
-  reactionKeys = keys; moreKeys = more;
-  const row = $("lb-react"); row.replaceChildren(...quick.map((k) => reactButton(k, "react", () => toggleReaction(k))));
+  reactionKeys = keys; quickKeys = quick; moreKeys = more;
+  const row = $("lb-react"); row.replaceChildren(...quick.map(rowButton));
   $("rp-grid").replaceChildren(...more.map((k) => reactButton(k, "rp-item", () => { closePicker(); toggleReaction(k); })));
   if (!more.length) return;   // an API that offers only the quick ones: no chip, no sheet
   const b = document.createElement("button"); b.type = "button"; b.className = "react more"; b.id = "react-more";
   b.setAttribute("aria-haspopup", "dialog"); b.setAttribute("aria-expanded", "false");
-  b.innerHTML = `${ADD_FACE}<span class="stack" aria-hidden="true"></span><span class="n" aria-hidden="true"></span>`;
+  b.innerHTML = `${ADD_FACE}<span class="n" aria-hidden="true"></span>`;
   b.addEventListener("click", openPicker);
   b.addEventListener("animationend", () => b.classList.remove("pop"));
   row.append(b);
@@ -540,16 +542,18 @@ function renderReactions(p, pop = null) {
   // Says tapping is welcome and anonymous, until this browser's first reaction shows it knows.
   $("lb-react-hint").hidden = row.hidden || reacted.any();
   if (row.hidden) return;
-  for (const b of row.querySelectorAll(".react[data-key]")) { showCounts(b, p); if (b.dataset.key === pop) restartPop(b); }
+  const { keys, rest } = reactionRow(quickKeys, moreKeys, p.reactions ?? {});
+  // Swap in a button only where this photo's row differs, so focus and a running pop survive.
+  const slots = [...row.querySelectorAll(".react[data-key]")];
+  keys.forEach((k, i) => { if (slots[i].dataset.key !== k) slots[i].replaceWith(slots[i] = rowButton(k)); });
+  for (const b of slots) { showCounts(b, p); if (b.dataset.key === pop) restartPop(b); }
   const more = $("react-more");
   if (!more) return;
-  const { top, total } = moreSummary(moreKeys, p.reactions ?? {});
-  more.classList.toggle("used", total > 0);
-  more.classList.toggle("mine", moreKeys.some((k) => reacted.has(p.id, k)));
-  more.querySelector(".stack").replaceChildren(...top.map((k) => Object.assign(document.createElement("span"), { textContent: REACTION_EMOJI[k] })));
-  more.querySelector(".n").textContent = total ? String(total) : "";
-  more.setAttribute("aria-label", total ? `More reactions, ${total} so far` : "More reactions");
-  if (moreKeys.includes(pop)) restartPop(more);
+  const off = moreKeys.filter((k) => !keys.includes(k));   // picker emoji not in the row
+  more.classList.toggle("mine", off.some((k) => reacted.has(p.id, k)));
+  more.querySelector(".n").textContent = rest ? String(rest) : "";
+  more.setAttribute("aria-label", rest ? `More reactions, ${rest} more so far` : "More reactions");
+  if (off.includes(pop)) restartPop(more);
   for (const b of $("rp-grid").children) showCounts(b, p);
 }
 function openPicker() {
