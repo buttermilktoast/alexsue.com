@@ -155,6 +155,12 @@ initializer with the dashboard. The design and the API live in the **merryroll**
   fades rather than going, so the masthead keeps its height for `framing()`. When there are new photos,
   a second line explains the gold dot. A touch tap that just misses a polaroid opens the nearest one on
   the near side of the tree (`nearestPhoto`).
+- **Teaching the taps:** visitors didn't know to tap a photo, or how to get from one to the next. Until a
+  browser has opened a photo (`xmas26-tapped`), a "Tap a photo" ring (`updateCoach`, `#coach`) rides on a
+  polaroid facing the camera in the middle of the screen; taps go through it. Until it has stepped to another
+  photo (`xmas26-swiped`), the first photo opened on a visit leans toward the next and back on a touch
+  screen, › pulses, and `#lb-note` says "Swipe for the next photo" (`teachSwipe`). The ‹ › are solid gold so
+  they're the brightest thing under the photo.
 - **Hiding the words and buttons:** the expand button top right (or `H`) fades the
   masthead, dock and version stamp, and turns into a collapse button that brings them back, so nothing covers the tree; `framing()` then reserves no room for them, and a view at
   home glides to fill the screen. It isn't remembered, so the next visit opens with the greeting.

@@ -38,6 +38,27 @@ body { background: var(--night); color: var(--ink); font-family: var(--body); ov
 #scene.pointing { cursor: pointer; }
 #snow { z-index: 2; pointer-events: none; }
 
+/* "Tap a photo": a ring on one polaroid facing us, with a label above it, until this browser has opened a
+   photo. main.js moves it (translate) and sizes it (--r) every frame; taps go through to the tree. */
+.coach { position: absolute; z-index: 2; left: 0; top: 0; pointer-events: none; transition: opacity 0.4s ease; --r: 30px; }
+.coach.off { opacity: 0; }
+.coach-ring, .coach-ring::after {
+  position: absolute; left: calc(var(--r) * -1); top: calc(var(--r) * -1); width: calc(var(--r) * 2); height: calc(var(--r) * 2);
+  border-radius: 50%; border: 2px solid var(--ember);
+}
+.coach-ring { box-shadow: 0 0 16px rgba(243, 182, 91, 0.55), inset 0 0 12px rgba(243, 182, 91, 0.3); }
+.coach-ring::after { content: ""; left: -2px; top: -2px; animation: coach-ripple 1.8s ease-out infinite; }
+@keyframes coach-ripple { from { transform: scale(1); opacity: 0.9; } 75%, to { transform: scale(1.6); opacity: 0; } }
+.coach-label {
+  position: absolute; left: 0; bottom: calc(var(--r) + 12px); transform: translateX(-50%);
+  padding: 0.35rem 0.75rem; border-radius: 999px; background: var(--ember); color: var(--ember-ink);
+  font-size: 0.85rem; font-weight: 650; white-space: nowrap; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+.coach-label::after {
+  content: ""; position: absolute; left: 50%; top: 100%; margin-left: -6px;
+  border: 6px solid transparent; border-top-color: var(--ember);
+}
+
 button { font: inherit; color: inherit; }
 button:focus-visible, input:focus-visible, label:focus-within { outline: 2px solid var(--ember); outline-offset: 2px; }
 
@@ -244,12 +265,20 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 @keyframes rp-fade { from { opacity: 0; } }
 @keyframes rp-up { from { transform: translateY(40px); opacity: 0; } }
 .lb-row { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 6px; }
-.lb-row output { min-width: 5.5rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.9rem; }
+.lb-row output { min-width: 5.5rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--ink); font-size: 0.9rem; }
 .round {
   width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%;
   border: 1px solid var(--line); background: var(--glass); cursor: pointer; font-size: 1.3rem; line-height: 1;
 }
 .round:hover { border-color: var(--ember); }
+/* ‹ ›: the way through the year, so they're the brightest thing under the photo. In faint glass like the ✕
+   and the reactions they read as one more small control, and people didn't find them. */
+.round.lb-step { width: 48px; height: 48px; background: var(--ember); border-color: var(--ember); color: var(--ember-ink); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); }
+.round.lb-step:hover { border-color: var(--paper); }
+.lb-step svg { width: 22px; height: 22px; }
+/* The first photo opened also points at ›, while the note says how to get to the next one (teachSwipe). */
+.lb-step.beckon { animation: beckon 1.2s ease-in-out 3; }
+@keyframes beckon { 50% { transform: scale(1.1); box-shadow: 0 0 0 9px rgba(243, 182, 91, 0.25), 0 4px 14px rgba(0, 0, 0, 0.4); } }
 .lb-close { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); right: max(16px, env(safe-area-inset-right, 0px)); }
 
 /* ---- Collage (every photo, by month) ---- */
@@ -395,5 +424,6 @@ button:focus-visible, input:focus-visible, label:focus-within { outline: 2px sol
 @media (prefers-reduced-motion: reduce) {
   .lb-polaroid { animation: none; }
   .react.pop .e, .react.more.pop .stack, .react-pick, .rp-sheet { animation: none; }
+  .coach-ring::after, .lb-step.beckon { animation: none; }
   .pol, #loading, .mast, .dock, .version { transition: none !important; }
 }

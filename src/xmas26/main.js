@@ -453,10 +453,11 @@ function openLightbox(i, dir = 0) {
   if (dir && !REDUCE) fig.animate([{ transform: `translateX(${dir * 45}%) rotate(${-1.2 + dir * 4}deg)`, opacity: 0 }, { transform: BASE_TILT, opacity: 1 }], { duration: 340, easing: "cubic-bezier(.2, .8, .2, 1)" });
   else { void fig.offsetWidth; fig.style.animation = ""; }
   const lb = $("lightbox");
-  if (lb.hidden) { lastFocus = document.activeElement; lb.hidden = false; $("lb-next").focus(); }
+  if (lb.hidden) { lastFocus = document.activeElement; lb.hidden = false; $("lb-next").focus(); teachSwipe(); }
   fitLightbox();
   markPhotoViewed(lbIndex);
   hintLearned = true; updateHint();   // they've found the photos; the tree's how-to can go
+  if (!tapped) { tapped = true; remember(TAPPED_KEY); }   // and so can the "Tap a photo" ring
   holdRotation(0);
   if ($("collage").hidden) flyToPhoto(lbIndex, 0.48);
 }
@@ -589,6 +590,7 @@ function stopVideo() {
   v.hidden = true; $("lb-img").hidden = false;
 }
 function closeLightbox() {
+  clearTimeout(teachTimer); $("lb-next").classList.remove("beckon");
   closePicker(false);
   stopVideo();
   resetPhotoGesture();
@@ -602,9 +604,9 @@ $("lb-prev").addEventListener("click", () => stepLightbox(-1));
 $("lb-next").addEventListener("click", () => stepLightbox(1));
 
 let noteTimer = 0;
-function flashNote(text) {
+function flashNote(text, ms = 1800) {
   const n = $("lb-note"); n.textContent = text; n.classList.add("show");
-  clearTimeout(noteTimer); noteTimer = setTimeout(() => n.classList.remove("show"), 1800);
+  clearTimeout(noteTimer); noteTimer = setTimeout(() => n.classList.remove("show"), ms);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -653,6 +655,7 @@ function settle() {
 // The arrows, the arrow keys and a swipe all come here. A swipe throws the photo off the way it was going first.
 async function stepLightbox(dir, dragged = false) {
   if (lbIndex < 0 || leaving) return;
+  learnedSwipe();
   if (dragged && !REDUCE) {
     leaving = true;
     await figEl.animate([{ transform: figEl.style.transform || BASE_TILT }, { transform: `translateX(${-dir * innerWidth}px) rotate(${-1.2 - dir * 8}deg)`, opacity: 0 }],
@@ -905,7 +908,90 @@ function updateHint() {
   el.classList.toggle("quiet", !text);
 }
 updateHint();
-const cardZoomed = () => cardMode && current().radius < cardView().radius * 0.92;
+
+// ---------------------------------------------------------------------------------------------
+// "Tap a photo". The masthead's how-to was too easy to miss on a phone, and a slowly turning tree reads
+// as something to watch, not something to tap. Until this browser has opened a photo, a ring rides on one
+// polaroid facing us near the middle of the screen, and moves on to another as the tree turns that one
+// away. It's only a picture: taps go straight through it to the tree.
+// ---------------------------------------------------------------------------------------------
+const TAPPED_KEY = "xmas26-tapped", SWIPED_KEY = "xmas26-swiped";
+const remembered = (k) => { try { return localStorage.getItem(k) === "1"; } catch { return false; } };
+const remember = (k) => { try { localStorage.setItem(k, "1"); } catch { /* private window: shown again next visit */ } };
+let tapped = remembered(TAPPED_KEY);
+const coachEl = $("coach"), coachV = new THREE.Vector3();
+const coach = { i: -1, x: 0, y: 0, r: 30, after: 0 };
+/** How squarely a polaroid faces the camera, around the trunk: 1 head on, 0 side on, below 0 the far side. */
+function facing(mesh) {
+  toCam.copy(camera.position).sub(mesh.position).normalize();
+  return (toCam.x * mesh.position.x + toCam.z * mesh.position.z) / Math.hypot(mesh.position.x, mesh.position.z);
+}
+function toScreen(v) { v.project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }
+// The room between the masthead (and the label above the ring) and the dock.
+function coachRoom() {
+  return { top: document.querySelector(".mast").getBoundingClientRect().bottom + 70, bottom: $("dock").getBoundingClientRect().top - 30, left: 40, right: innerWidth - 40 };
+}
+const inRoom = (s, room) => s.y > room.top && s.y < room.bottom && s.x > room.left && s.x < room.right;
+function pickCoach(room) {
+  const cx = innerWidth / 2, cy = (room.top + room.bottom) / 2;
+  let best = -1, bestD = Infinity;
+  pols.forEach(({ mesh }, i) => {
+    if (facing(mesh) < 0.75) return;
+    const s = toScreen(coachV.copy(mesh.position));
+    if (!inRoom(s, room)) return;
+    const d = Math.hypot(s.x - cx, (s.y - cy) * 0.6);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+function updateCoach(now) {
+  if (!introDone) coach.after = now + 1200;   // let the tree settle first
+  const show = !tapped && introDone && now > coach.after && !cardMode && !flying && activeMonth < 0 && !overlayOpen()
+    && $("hello").hidden && $("note").hidden && $("waitlist").hidden;
+  if (!show) { if (coach.i >= 0) { coach.i = -1; coachEl.classList.add("off"); } return; }
+  const room = coachRoom(), was = coach.i;
+  if (coach.i < 0 || facing(pols[coach.i].mesh) < 0.45 || !inRoom(toScreen(coachV.copy(pols[coach.i].mesh.position)), room)) coach.i = pickCoach(room);
+  if (coach.i < 0) { coachEl.classList.add("off"); return; }
+  const m = pols[coach.i].mesh, s = toScreen(coachV.copy(m.position));
+  coachV.copy(m.position); coachV.y += (m.geometry.parameters.height / 2) * m.scale.y;
+  const r = Math.max(26, Math.abs(s.y - toScreen(coachV).y) * 1.4);   // a little wider than the polaroid
+  // Follow closely, and glide (rather than jump) when it moves on to another photo.
+  const k = was < 0 ? 1 : 0.25;
+  coach.x += (s.x - coach.x) * k; coach.y += (s.y - coach.y) * k; coach.r += (r - coach.r) * k;
+  coachEl.style.transform = `translate(${coach.x.toFixed(1)}px, ${coach.y.toFixed(1)}px)`;
+  coachEl.style.setProperty("--r", `${coach.r.toFixed(1)}px`);
+  coachEl.classList.remove("off");
+}
+
+// The first photo opened on a visit, until this browser has gone from one photo to the next, shows how:
+// the photo leans toward the next one and back, as a finger would push it, › pulses, and the note says so.
+let swiped = remembered(SWIPED_KEY), taught = false, teachTimer = 0;
+function teachSwipe() {
+  if (swiped || taught || photos.length < 2) return;
+  taught = true;
+  clearTimeout(teachTimer);
+  teachTimer = setTimeout(() => {
+    if (lbIndex < 0 || swiped || gesture || zoom.s > 1) return;
+    flashNote(FINE_POINTER ? "Use › or the arrow keys for the next photo" : "Swipe for the next photo", 4000);
+    $("lb-next").classList.add("beckon");
+    teachTimer = setTimeout(() => $("lb-next").classList.remove("beckon"), 3600);
+    if (!REDUCE && !FINE_POINTER) {
+      figEl.animate([
+        { transform: BASE_TILT },
+        { transform: "translateX(-24%) rotate(-3.4deg)", offset: 0.3 },
+        { transform: BASE_TILT, offset: 0.6 },
+        { transform: "translateX(-9%) rotate(-2deg)", offset: 0.75 },
+        { transform: BASE_TILT },
+      ], { duration: 1500, easing: "cubic-bezier(.45, 0, .2, 1)" });
+    }
+  }, 800);   // after the photo's own entrance
+}
+function learnedSwipe() {
+  clearTimeout(teachTimer); $("lb-next").classList.remove("beckon");
+  if (!swiped) { swiped = true; remember(SWIPED_KEY); }
+}
+
+const cardZoomed =() => cardMode && current().radius < cardView().radius * 0.92;
 function fitCard() { holdRotation(0); return flyTo(cardView(), 0.5); }
 let zoomedBefore = null;
 function cardGestures() {
@@ -1202,6 +1288,7 @@ function frame(now) {
   if (card && !flipping && !REDUCE && !cardMode) card.position.y = card.userData.baseY + Math.sin(t * 0.9) * 0.025;
   if (!flying) controls.update();
   renderer.render(scene, camera);
+  updateCoach(now);
   drawSnow(t);
 }
 

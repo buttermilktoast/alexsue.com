@@ -26,6 +26,8 @@
 <div id="app">
   <canvas id="scene" aria-label="A Christmas tree made of polaroid photos from 2026, with the family card under it. Drag to turn it."></canvas>
   <canvas id="snow" aria-hidden="true"></canvas>
+  <!-- "Tap a photo": rides on one polaroid until this browser has opened a photo (main.js, updateCoach). Taps go through it. -->
+  <div class="coach off" id="coach" aria-hidden="true"><span class="coach-ring"></span><span class="coach-label">Tap a photo</span></div>
 
   <header class="mast">
     <p class="eyebrow">Mele Kalikimaka<span id="who-wrap" hidden><span id="who-sep">, </span><button class="who" id="who" type="button" title="Change your name"></button></span></p>
@@ -83,9 +85,9 @@
     <p class="lb-react-hint" id="lb-react-hint" hidden>Tap to react · no one will know it's you</p>
     <div class="lb-react" id="lb-react" role="group" aria-label="React to this photo" hidden></div>
     <div class="lb-row">
-      <button class="round" id="lb-prev" type="button" aria-label="Previous photo">‹</button>
+      <button class="round lb-step" id="lb-prev" type="button" aria-label="Previous photo"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4l-6 6 6 6"/></svg></button>
       <output id="lb-count"></output>
-      <button class="round" id="lb-next" type="button" aria-label="Next photo">›</button>
+      <button class="round lb-step" id="lb-next" type="button" aria-label="Next photo"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 4l6 6-6 6"/></svg></button>
     </div>
   </div>
   <div class="react-pick" id="react-pick" hidden>
